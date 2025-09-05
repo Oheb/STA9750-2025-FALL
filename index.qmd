@@ -1,0 +1,39 @@
+---
+title: "Daniel Ohebshalom's Mini Project 00"
+---
+
+Hi, I am Daniel Ohebshalom, MSBA Student at Baruch College
+I went to SUNY Buffalo for Undergraduate, class of 2025, with a bachelor of Science in Business Administration
+
+Here is my [favorite website](https://www.espn.com)
+
+If you want to keep in touch, you could reach me either at <daniel.josephohebshalom@gmail.com> or <https://www.linkedin.com/in/danielohebshalom>
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("leaflet")){
+    options(repos=c(CRAN="https://cloud.r-project.org"))
+    install.packages("leaflet")
+    stopifnot(require("leaflet"))
+}
+
+baruch_longitude <- -73.98333
+baruch_latitude  <- +40.75028
+
+leaflet() |>
+  addTiles() |>
+  setView(baruch_longitude, baruch_latitude, zoom=17) |>
+  addPopups(baruch_longitude, baruch_latitude, 
+            "I am a Master's student at <b>Baruch College</b>!")
+```
+
+
+```{r}
+#| include: false
+1+1
+```
+--------------
+Last Updated: `r format(Sys.time(), "%A %m %d, %Y at %H:%M%p")`
