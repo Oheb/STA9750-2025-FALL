@@ -5,7 +5,7 @@ date: "09-24-2025"
 format: 
   html:
     code-fold: true
-    theme: sandstone
+    theme: lumen
     toc: true
 ---
 
