@@ -113,7 +113,7 @@ get_building_permits <- function(start_year = 2009, end_year = 2023){
         
         CURRENT_YEARS <- seq(2019, end_year)
         
-        CURRENT_DATA <- map(CURRENT_YEARS, function(yy){
+        CURRENT <- map(CURRENT_YEARS, function(yy){
             current_url <- glue("https://www.census.gov/construction/bps/xls/msaannual_{yy}99.xls")
             
             temp <- tempfile()
@@ -136,7 +136,7 @@ get_building_permits <- function(start_year = 2009, end_year = 2023){
                 rename(new_housing_units_permitted = Total)
         }) |> bind_rows()
         
-        ALL_DATA <- rbind(HISTORICAL_DATA, CURRENT_DATA)
+        ALL_DATA <- rbind(HISTORICAL_DATA, CURRENT)
         
         write_csv(ALL_DATA, fname)
         
@@ -146,6 +146,77 @@ get_building_permits <- function(start_year = 2009, end_year = 2023){
 }
 
 PERMITS <- get_building_permits()
+
+# BLS QUarterly Census Data:
+library(httr2)
+library(rvest)
+get_bls_qcew_annual_averages <- function(start_year=2009, end_year=2023){
+    fname <- glue("bls_qcew_{start_year}_{end_year}.csv.gz")
+    fname <- file.path("data", "mp02", fname)
+    
+    YEARS <- seq(start_year, end_year)
+    YEARS <- YEARS[YEARS != 2020] # Drop Covid year to match ACS
+    
+    if(!file.exists(fname)){
+        ALL_DATA <- map(YEARS, .progress=TRUE, possibly(function(yy){
+            fname_inner <- file.path("data", "mp02", glue("{yy}_qcew_annual_singlefile.zip"))
+            
+            if(!file.exists(fname_inner)){
+                request("https://www.bls.gov") |> 
+                    req_url_path("cew", "data", "files", yy, "csv",
+                                 glue("{yy}_annual_singlefile.zip")) |>
+                    req_headers(`User-Agent` = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:143.0) Gecko/20100101 Firefox/143.0") |> 
+                    req_retry(max_tries=5) |>
+                    req_perform(fname_inner)
+            }
+            
+            if(file.info(fname_inner)$size < 755e5){
+                warning(sQuote(fname_inner), "appears corrupted. Please delete and retry this step.")
+            }
+            
+            read_csv(fname_inner, 
+                     show_col_types=FALSE) |> 
+                mutate(YEAR = yy) |>
+                select(area_fips, 
+                       industry_code, 
+                       annual_avg_emplvl, 
+                       total_annual_wages, 
+                       YEAR) |>
+                filter(nchar(industry_code) <= 5, 
+                       str_starts(area_fips, "C")) |>
+                filter(str_detect(industry_code, "-", negate=TRUE)) |>
+                mutate(FIPS = area_fips, 
+                       INDUSTRY = as.integer(industry_code), 
+                       EMPLOYMENT = as.integer(annual_avg_emplvl), 
+                       TOTAL_WAGES = total_annual_wages) |>
+                select(-area_fips, 
+                       -industry_code, 
+                       -annual_avg_emplvl, 
+                       -total_annual_wages) |>
+                # 10 is a special value: "all industries" , so omit
+                filter(INDUSTRY != 10) |> 
+                mutate(AVG_WAGE = TOTAL_WAGES / EMPLOYMENT)
+        })) |> bind_rows()
+        
+        write_csv(ALL_DATA, fname)
+    }
+    
+    ALL_DATA <- read_csv(fname, show_col_types=FALSE)
+    
+    ALL_DATA_YEARS <- unique(ALL_DATA$YEAR)
+    
+    YEARS_DIFF <- setdiff(YEARS, ALL_DATA_YEARS)
+    
+    if(length(YEARS_DIFF) > 0){
+        stop("Download failed for the following years: ", YEARS_DIFF, 
+             ". Please delete intermediate files and try again.")
+    }
+    
+    ALL_DATA
+}
+
+WAGES <- get_bls_qcew_annual_averages()
+
 ```
 
 # Final Data Import:
@@ -153,16 +224,12 @@ PERMITS <- get_building_permits()
 ```{r}
 suppressPackageStartupMessages({
 # Import all CSV files and assign them to the correct object names
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
-households_data <- read_csv("B11001_001_cbsa_2009_2023.csv")
-income_data <- read_csv("B19013_001_cbsa_2009_2023.csv")
-rent_data <- read_csv("B25064_001_cbsa_2009_2023.csv")
-
-permits_data <- read_csv("housing_units_2009_2023.csv")
-
-# assume you have extracted the cz file to a standard CSV for the read_csv command below.
-qcew_data <- read_csv("bls_qcew_2009_2023.csv")
-naics_codes <- read_csv("bls_industry_codes.csv")
+POPULATION <- get_acs_all_years("B01003_001") |>     rename(population = B01003_001)
+HOUSEHOLDS <- get_acs_all_years("B11001_001") |>     rename(households = B11001_001)
+INCOME <- get_acs_all_years("B19013_001") |>     rename(household_income = B19013_001)
+RENT <- get_acs_all_years("B25064_001") |>     rename(monthly_rent = B25064_001)
+PERMITS <- get_building_permits()
+WAGES <- get_bls_qcew_annual_averages()
 })
 ```
 
@@ -177,17 +244,17 @@ library(readr)
 
 # Load the datasets
 # B01003_001_cbsa_2009_2023.csv contains CBSA names (NAME) and IDs (GEOID)
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
+POPULATION <- get_acs_all_years("B01003_001") |>     rename(population = B01003_001)
 # housing_units_2009_2023.csv contains the permitted housing units
-permits_data <- read_csv("housing_units_2009_2023.csv")
+PERMITS <- get_building_permits()
 
 # 1. Get the distinct CBSA names and IDs
-cbsa_names <- pop_data %>%
+cbsa_names <- POPULATION %>%
   select(GEOID, NAME) %>%
   distinct()
 
 # 2. Process the permits data to find the largest total
-largest_permitting_cbsa <- permits_data %>%
+largest_permitting_cbsa <- PERMITS %>%
   # Rename CBSA column for consistent joining (match GEOID)
   rename(GEOID = CBSA) %>%
   # Filter for the decade 2010 to 2019 (inclusive)
@@ -235,9 +302,9 @@ library(dplyr)
 library(readr)
 
 # Load the housing permits data
-permits_data <- read_csv("housing_units_2009_2023.csv")
+PERMITS <- get_building_permits()
 
-albuquerque_max_permits <- permits_data %>%
+albuquerque_max_permits <- PERMITS %>%
   # Filter for Albuquerque, NM's CBSA ID (10740)
   filter(CBSA == 10740) %>%
   # Arrange the data in descending order of permitted units
@@ -274,59 +341,50 @@ cat(paste0(
 library(dplyr)
 library(readr)
 library(stringr)
+library(tidyr)
 
 # Load the necessary datasets
-income_data <- read_csv("B19013_001_cbsa_2009_2023.csv")
-households_data <- read_csv("B11001_001_cbsa_2009_2023.csv")
-population_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
+INCOME <- get_acs_all_years("B19013_001") |>     
+  rename(household_income = B19013_001)
+HOUSEHOLDS <- get_acs_all_years("B11001_001") |>     
+  rename(households = B11001_001)
+POPULATION <- get_acs_all_years("B01003_001") |>     
+  rename(population = B01003_001)
 
 # Set the target year
 TARGET_YEAR <- 2015
 
 # Step 1: Filter and join data for 2015
-cbsa_data_2015 <- income_data %>%
+cbsa_data_2015 <- INCOME %>%
   filter(year == TARGET_YEAR) %>%
+  select(GEOID, NAME, household_income) %>%
   # Join with households data
   inner_join(
-    households_data %>% filter(year == TARGET_YEAR) %>% select(GEOID, B11001_001),
+    HOUSEHOLDS %>% filter(year == TARGET_YEAR) %>% select(GEOID, households),
     by = "GEOID"
   ) %>%
   # Join with population data
   inner_join(
-    population_data %>% filter(year == TARGET_YEAR) %>% select(GEOID, B01003_001),
+    POPULATION %>% filter(year == TARGET_YEAR) %>% select(GEOID, population),
     by = "GEOID"
   ) %>%
-  # Rename columns for clarity (B19013_001 = Avg Household Income, B11001_001 = Total Households, B01003_001 = Total Population)
-  rename(
-    avg_household_income = B19013_001,
-    total_households = B11001_001,
-    total_population_cbsa = B01003_001
-  ) %>%
-  # Calculate Total Income per CBSA
+  # Calculate Total Income (Household Income * Number of Households)
   mutate(
-    total_income_cbsa = avg_household_income * total_households
+    total_income_cbsa = household_income * households
   )
 
 # Step 2: Extract state(s) from CBSA NAME and un-nest the data
 state_level_data <- cbsa_data_2015 %>%
-  # Extract state abbreviation(s) from the NAME column (e.g., "TX" from "Dallas... TX Metro Area" or "DC-VA-MD-WV" from "Washington...")
+  # Extract state abbreviation(s) from the NAME column
   mutate(
-    # Use str_extract to find the state abbreviation(s)
-    # The regex captures the state abbreviation(s) just before ' Metro Area' or ' Micro Area'
     state_abbr_string = str_extract(NAME, "(?:([A-Z]{2})(?:-[A-Z]{2})*)?(?=\\s+(?:Metro|Micro)\\s+Area)")
   ) %>%
-  # Split the state abbreviation string by the hyphen into a list of states
-  # Use mutate(states = str_split(...)) and then unnest(states) in base R's dplyr version.
-  # If using tidyr >= 1.0.0, separate_rows can simplify this.
-  mutate(
-    state_abbr_list = str_split(state_abbr_string, "-")
-  ) %>%
-  # Convert the list column to individual rows for each state involved
-  tidyr::unnest(state_abbr_list) %>%
-  rename(state = state_abbr_list) %>%
+  # Split the state abbreviation string by hyphen into separate rows
+  separate_rows(state_abbr_string, sep = "-", convert = FALSE) %>%
+  rename(state = state_abbr_string) %>%
   # Keep only necessary columns for aggregation
-  select(state, total_income_cbsa, total_population_cbsa) %>%
-  # Filter out rows where state extraction failed (e.g., 'NA' or 'UNKNOWN')
+  select(state, total_income_cbsa, population) %>%
+  # Filter out rows where state extraction failed
   filter(!is.na(state))
 
 # Step 3: Aggregate total income and total population by State
@@ -334,7 +392,7 @@ final_aggregation <- state_level_data %>%
   group_by(state) %>%
   summarise(
     total_income_state = sum(total_income_cbsa, na.rm = TRUE),
-    total_population_state = sum(total_population_cbsa, na.rm = TRUE),
+    total_population_state = sum(population, na.rm = TRUE),
     .groups = 'drop'
   ) %>%
   # Calculate the final average individual income
@@ -355,7 +413,7 @@ winning_income <- final_aggregation %>% pull(avg_individual_income)
 # Format the income as currency
 formatted_income <- paste0("$", format(round(winning_income), big.mark = ","))
 
-# Print the result as a full sentence using cat for clean output
+# Print the result as a full sentence
 cat(paste0(
   "\n\n",
   "Based on the Core Based Statistical Area (CBSA) data for ",
@@ -377,14 +435,14 @@ library(readr)
 library(stringr)
 
 # Load the necessary datasets
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
-qcew_data <- read_csv("bls_qcew_2009_2023.csv")
+POPULATION <- get_acs_all_years("B01003_001") |>     rename(population = B01003_001)
+WAGES <- get_bls_qcew_annual_averages()
 
 # NAICS code for Data Scientists and Business Analysts (NAICS 5182: Data Processing, Hosting, and Related Services)
 TARGET_NAICS <- '5182'
 
 # --- 1. Filter and Prepare QCEW data (BLS) ---
-qcew_prep <- qcew_data %>%
+qcew_prep <- WAGES %>%
   # Filter for the target NAICS code (using string start)
   filter(str_detect(INDUSTRY, paste0('^', TARGET_NAICS))) %>%
   # Create the standardized CBSA ID for joining (BLS FIPS is e.g., 'C4790', needs 'C47900')
@@ -395,7 +453,7 @@ qcew_prep <- qcew_data %>%
   filter(data_scientist_employment > 0)
 
 # --- 2. Filter and Prepare Population/Name data (Census) ---
-cbsa_names_prep <- pop_data %>%
+cbsa_names_prep <- POPULATION %>%
   select(GEOID, NAME) %>%
   distinct() %>%
   # Create the standardized CBSA ID for joining (Census GEOID is e.g., 47900, needs 'C47900')
@@ -473,19 +531,18 @@ print(paste("This fraction peaked in the year:", peak_year))
 ## 1: The relationship between monthly rent and average household income per CBSA in 2009.
 ```{r}
 # Prepare data: Join income and rent for 2009
-plot1_data <- income_data %>%
+plot1_data <- INCOME %>%
   filter(year == 2009) %>%
-  rename(avg_household_income = B19013_001) %>%
+  select(GEOID, household_income) %>%
   inner_join(
-    rent_data %>%
+    RENT %>%
       filter(year == 2009) %>%
-      rename(monthly_rent = B25064_001) %>%
       select(GEOID, monthly_rent),
     by = "GEOID"
   )
 
 # Create Visualization
-plot1 <- ggplot(plot1_data, aes(x = avg_household_income, y = monthly_rent)) +
+plot1 <- ggplot(plot1_data, aes(x = household_income, y = monthly_rent)) +
   # Add points with some transparency
   geom_point(alpha = 0.6, color = "darkblue") +
   # Add a linear regression line
@@ -510,16 +567,17 @@ library(tidyverse)
 library(stringr)
 
 # --- Load Data (Run this setup in RStudio first) ---
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
-qcew_data <- read_csv("bls_qcew_2009_2023.csv")
+POPULATION <- get_acs_all_years("B01003_001") |>     
+  rename(population = B01003_001)
+WAGES <- get_bls_qcew_annual_averages()
 
 # Constants
 NAICS_62 <- '62'      # Health Care and Social Assistance
-INDUSTRY_TOTAL_PRIVATE <- '101' # FIX: Use '101' (Total Private) for the Total Employment denominator
+INDUSTRY_TOTAL_PRIVATE <- '101' # Total Private Employment
 
 # --- Data Preparation ---
 # 1. FIPS to GEOID/Name mapping
-cbsa_map <- pop_data %>%
+cbsa_map <- POPULATION %>%
   select(GEOID, NAME) %>%
   distinct() %>%
   # Create the BLS-style FIPS prefix from the Census GEOID (e.g., 47900 -> C4790)
@@ -528,11 +586,11 @@ cbsa_map <- pop_data %>%
   distinct()
 
 # 2. Prepare QCEW data
-qcew_prep <- qcew_data %>%
-  rename(year = YEAR, employment = EMPLOYMENT) %>%
-  select(year, FIPS, INDUSTRY, employment)
+qcew_prep <- WAGES %>%
+  select(YEAR, FIPS, INDUSTRY, EMPLOYMENT) %>%
+  rename(year = YEAR, employment = EMPLOYMENT)
 
-# 3. Total Employment (Denominator: INDUSTRY == '101') - FIX applied here
+# 3. Total Employment (Denominator: INDUSTRY == '101')
 total_emp_df <- qcew_prep %>%
   filter(INDUSTRY == INDUSTRY_TOTAL_PRIVATE) %>%
   rename(total_employment = employment) %>%
@@ -566,7 +624,6 @@ plot2 <- ggplot(plot2_data, aes(x = total_employment, y = healthcare_employment,
   theme_minimal() +
   scale_x_continuous(labels = scales::comma) +
   scale_y_continuous(labels = scales::comma) +
-  
   guides(color = guide_legend(override.aes = list(alpha = 1)))
 
 print(plot2)
@@ -576,35 +633,32 @@ print(plot2)
 ## 3: The evolution of average household size over time in different CBSAs.
 
 ```{r}
-
 library(dplyr)
 library(readr)
 library(ggplot2)
 library(scales) 
 
 # --- 1. Load and Prepare Core Data ---
-# B01003_001 is Total Population
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
-pop_data <- pop_data %>% rename(total_population = B01003_001) %>% select(GEOID, NAME, year, total_population)
-
-# B11001_001 is Total Households
-households_data <- read_csv("B11001_001_cbsa_2009_2023.csv")
-households_data <- households_data %>% rename(total_households = B11001_001) %>% select(GEOID, year, total_households)
+POPULATION <- get_acs_all_years("B01003_001") |>     
+  rename(population = B01003_001)
+HOUSEHOLDS <- get_acs_all_years("B11001_001") |>     
+  rename(households = B11001_001)
 
 # --- 2. Calculate Average Household Size for ALL CBSAs ---
-household_size_data <- inner_join(pop_data, households_data, by = c("GEOID", "year"))
-
-household_size_data <- household_size_data %>%
+household_size_data <- inner_join(
+  POPULATION %>% select(GEOID, year, NAME, population),
+  HOUSEHOLDS %>% select(GEOID, year, households),
+  by = c("GEOID", "year")
+) %>%
   mutate(
     # Household size = Total Population / Total Households
-    avg_household_size = total_population / total_households
+    avg_household_size = population / households
   ) %>%
   # Filter out any rows with infinite or missing values that can break plotting
   filter(is.finite(avg_household_size) & !is.na(avg_household_size))
 
 # --- 3. Identify the Top 5 and Bottom 5 for Labeling (Optional but Recommended) ---
-# To prevent an overly messy plot, we calculate the 2023 size and only label the most extreme CBSAs.
-
+# To prevent an overly messy plot, we calculate the final year size and only label the most extreme CBSAs.
 final_year_data <- household_size_data %>%
   filter(year == max(year, na.rm = TRUE)) %>%
   arrange(desc(avg_household_size)) 
@@ -616,7 +670,6 @@ top_and_bottom_cbsas <- c(
 )
 
 # --- 4. GGPLOT2 Visualization (Plotting ALL CBSAs) ---
-
 # Create the plot data, adding a group for all other CBSAs for visual context
 plot_data_all <- household_size_data %>%
   mutate(
@@ -658,7 +711,6 @@ p_all <- ggplot(plot_data_all, aes(x = year, y = avg_household_size, group = GEO
         legend.title = element_text(face = "bold"))
 
 print(p_all)
-
 ```
 # Task 4: Rent Burden:
 
@@ -668,18 +720,20 @@ library(dplyr)
 library(readr)
 
 # --- Load Data (assuming files are in your R working directory) ---
-income_data <- read_csv("B19013_001_cbsa_2009_2023.csv")
-rent_data <- read_csv("B25064_001_cbsa_2009_2023.csv")
+INCOME <- get_acs_all_years("B19013_001") |>     
+  rename(household_income = B19013_001)
+RENT <- get_acs_all_years("B25064_001") |>     
+  rename(monthly_rent = B25064_001)
 
 # --- 1. Join Tables and Calculate Raw Ratio ---
-rent_burden_data <- income_data %>%
+rent_burden_data <- INCOME %>%
   # Select and rename columns for clarity
-  select(GEOID, NAME, year, median_income = B19013_001) %>%
+  select(GEOID, NAME, year, median_income = household_income) %>%
   
   # Join with rent data
   inner_join(
-    rent_data %>% 
-      select(GEOID, year, median_rent = B25064_001), 
+    RENT %>% 
+      select(GEOID, year, median_rent = monthly_rent), 
     by = c("GEOID", "year")
   ) %>%
   
@@ -690,7 +744,6 @@ rent_burden_data <- income_data %>%
   )
 
 # --- 2. Calculate Baseline and Standardize Metric ---
-
 # Find the National Average Raw Ratio in the first year (2009) to use as the baseline
 baseline_2009_avg_ratio <- rent_burden_data %>%
   filter(year == 2009) %>%
@@ -715,8 +768,6 @@ rent_burden_analysis <- rent_burden_data %>%
 cat(paste("Baseline (2009 National Average Rent-to-Income Ratio):", 
           round(baseline_2009_avg_ratio * 100, 2), "%\n\n"))
 
-
-
 # Print the first few rows of the final standardized data
 print(head(rent_burden_analysis))
 ```
@@ -729,17 +780,18 @@ library(dplyr)
 library(stringr)
 
 # --- 1. Data Loading and RBI Metric Calculation ---
-
 # Load the base data
-income_data <- read_csv("B19013_001_cbsa_2009_2023.csv")
-rent_data <- read_csv("B25064_001_cbsa_2009_2023.csv")
+INCOME <- get_acs_all_years("B19013_001") |>     
+  rename(household_income = B19013_001)
+RENT <- get_acs_all_years("B25064_001") |>     
+  rename(monthly_rent = B25064_001)
 
 # Calculate Raw Ratio
-rent_burden_data <- income_data %>%
-  select(GEOID, NAME, year, median_income = B19013_001) %>%
+rent_burden_data <- INCOME %>%
+  select(GEOID, NAME, year, median_income = household_income) %>%
   inner_join(
-    rent_data %>%
-      select(GEOID, year, median_rent = B25064_001),
+    RENT %>%
+      select(GEOID, year, median_rent = monthly_rent),
     by = c("GEOID", "year")
   ) %>%
   mutate(
@@ -768,7 +820,6 @@ latest_year <- max(rent_burden_analysis$year)
 
 ### Table 1: Time Evolution for Buffalo-Niagara Falls, NY Metro Area
 ```{r}
-
 buffalo_table <- rent_burden_analysis %>%
   filter(NAME == TARGET_CBSA_NAME) %>%
   select(year, 'Raw Ratio (%)' = raw_ratio_pct, 'Rent Burden Index (RBI)' = rent_burden_index) %>%
@@ -788,8 +839,6 @@ DT::datatable(
 
 ### Table 2: Top 5 Highest and Lowest Rent Burden (Latest Year: 2023)
 ```{r}
-
-
 latest_year_df <- rent_burden_analysis %>%
   filter(year == latest_year)
 
@@ -830,7 +879,6 @@ DT::datatable(
 
 ### Table 3: Full Rent Burden Analysis (All CBSAs, 2009-2023) 
 ```{r}
-
 full_analysis_table <- rent_burden_analysis %>%
   select(year, 'Metropolitan Area' = NAME, 'Raw Ratio (%)' = raw_ratio_pct, 'Rent Burden Index (RBI)' = rent_burden_index) %>%
   mutate(
@@ -855,21 +903,17 @@ library(dplyr)
 library(readr)
 
 # --- Load Data ---
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
-permits_data <- read_csv("housing_units_2009_2023.csv")
-
-# Ensure column names are consistent/correct
-pop_data <- pop_data %>%
+POPULATION <- get_acs_all_years("B01003_001") |>     
   rename(total_population = B01003_001) %>%
   select(GEOID, NAME, year, total_population)
 
-permits_data <- permits_data %>%
+PERMITS <- get_building_permits() %>%
   rename(GEOID = CBSA, new_permits = new_housing_units_permitted) %>%
   select(GEOID, year, new_permits)
 
 # --- Join Tables and Calculate 5-Year Population Growth ---
-growth_data <- pop_data %>%
-  inner_join(permits_data, by = c("GEOID", "year")) %>%
+growth_data <- POPULATION %>%
+  inner_join(PERMITS, by = c("GEOID", "year")) %>%
   arrange(GEOID, year) %>%
   group_by(GEOID) %>%
   mutate(
@@ -880,11 +924,7 @@ growth_data <- pop_data %>%
   ungroup() %>%
   filter(year >= 2014)
 
-
-# ----------------------------------------------------------------------
 # --- 1. 'Instantaneous' Measure of Housing Growth (HGI) ---
-# ----------------------------------------------------------------------
-
 # Raw Metric: New Permits per 1,000 residents (HGI_raw)
 HGI_data <- growth_data %>%
   mutate(HGI_raw = (new_permits / total_population) * 1000)
@@ -895,16 +935,12 @@ HGI_baseline_2014 <- HGI_data %>%
   summarise(avg_HGI_raw_2014 = mean(HGI_raw, na.rm = TRUE)) %>%
   pull(avg_HGI_raw_2014)
 
-# Standardize: HGI_Index = HGI_raw / HGI_baseline_2014 ("times the 2014 national average")
+# Standardize: HGI_Index = HGI_raw / HGI_baseline_2014
 HGI_data <- HGI_data %>%
   mutate(HGI_Index = HGI_raw / HGI_baseline_2014) %>%
   select(GEOID, NAME, year, HGI_raw, HGI_Index)
 
-
-# ----------------------------------------------------------------------
 # --- 2. 'Rate-Based' Measure of Housing Growth (HGR) ---
-# ----------------------------------------------------------------------
-
 # Raw Metric: New Permits per unit of 5-year Population Growth (HGR_raw)
 HGR_data <- growth_data %>%
   filter(!is.na(pop_growth_5yr)) %>%
@@ -919,14 +955,13 @@ HGR_baseline_2014 <- HGR_data %>%
   summarise(avg_HGR_raw_2014 = mean(HGR_raw[is.finite(HGR_raw)], na.rm = TRUE)) %>%
   pull(avg_HGR_raw_2014)
 
-# Standardize: HGR_Index = HGR_raw / HGR_baseline_2014 ("times the 2014 national average")
+# Standardize: HGR_Index = HGR_raw / HGR_baseline_2014
 HGR_data <- HGR_data %>%
   mutate(HGR_raw = ifelse(is.finite(HGR_raw), HGR_raw, NA)) %>%
   mutate(
     HGR_Index = HGR_raw / HGR_baseline_2014
   ) %>%
   select(GEOID, NAME, year, HGR_raw, HGR_Index)
-
 
 # --- Final Join and Output ---
 housing_growth_analysis <- HGI_data %>%
@@ -935,29 +970,26 @@ housing_growth_analysis <- HGI_data %>%
 
 # Save the final data to CSV
 housing_growth_analysis %>% write_csv("housing_growth_analysis.csv")
-
 ```
 
 ## Tables that identify CBSAs that score high/low on selected metrics 
 ```{r}
-
 library(dplyr)
 library(readr)
 library(DT)
 
 # --- 1. Data Recreation and HGS Calculation ---
-
-# Load and prepare data (re-run of previous step to ensure data completeness)
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv") %>%
+# Load and prepare data
+POPULATION <- get_acs_all_years("B01003_001") |>     
   rename(total_population = B01003_001) %>%
   select(GEOID, NAME, year, total_population)
 
-permits_data <- read_csv("housing_units_2009_2023.csv") %>%
+PERMITS <- get_building_permits() %>%
   rename(GEOID = CBSA, new_permits = new_housing_units_permitted) %>%
   select(GEOID, year, new_permits)
 
-growth_data <- pop_data %>%
-  inner_join(permits_data, by = c("GEOID", "year")) %>%
+growth_data <- POPULATION %>%
+  inner_join(PERMITS, by = c("GEOID", "year")) %>%
   arrange(GEOID, year) %>%
   group_by(GEOID) %>%
   mutate(
@@ -968,16 +1000,34 @@ growth_data <- pop_data %>%
   filter(year >= 2014)
 
 # HGI Index Calculation (Permits per 1k Residents)
-HGI_data <- growth_data %>% mutate(HGI_raw = (new_permits / total_population) * 1000)
-HGI_baseline_2014 <- HGI_data %>% filter(year == 2014) %>% summarise(avg = mean(HGI_raw, na.rm = TRUE)) %>% pull(avg)
-HGI_data <- HGI_data %>% mutate(HGI_Index = HGI_raw / HGI_baseline_2014) %>% select(GEOID, NAME, year, HGI_Index)
+HGI_data <- growth_data %>% 
+  mutate(HGI_raw = (new_permits / total_population) * 1000)
+
+HGI_baseline_2014 <- HGI_data %>% 
+  filter(year == 2014) %>% 
+  summarise(avg = mean(HGI_raw, na.rm = TRUE)) %>% 
+  pull(avg)
+
+HGI_data <- HGI_data %>% 
+  mutate(HGI_Index = HGI_raw / HGI_baseline_2014) %>% 
+  select(GEOID, NAME, year, HGI_Index)
 
 # HGR Index Calculation (Permits per 5-year Pop Growth + 1)
 HGR_data <- growth_data %>%
   filter(!is.na(pop_growth_5yr)) %>%
   mutate(HGR_raw = new_permits / (pop_growth_5yr + 1))
-HGR_baseline_2014 <- HGR_data %>% filter(year == 2014) %>% summarise(avg = mean(HGR_raw[is.finite(HGR_raw)], na.rm = TRUE)) %>% pull(avg)
-HGR_data <- HGR_data %>% mutate(HGR_raw = ifelse(is.finite(HGR_raw), HGR_raw, NA), HGR_Index = HGR_raw / HGR_baseline_2014) %>% select(GEOID, NAME, year, HGR_Index)
+
+HGR_baseline_2014 <- HGR_data %>% 
+  filter(year == 2014) %>% 
+  summarise(avg = mean(HGR_raw[is.finite(HGR_raw)], na.rm = TRUE)) %>% 
+  pull(avg)
+
+HGR_data <- HGR_data %>% 
+  mutate(
+    HGR_raw = ifelse(is.finite(HGR_raw), HGR_raw, NA), 
+    HGR_Index = HGR_raw / HGR_baseline_2014
+  ) %>% 
+  select(GEOID, NAME, year, HGR_Index)
 
 # Final Housing Growth Analysis and HGS
 housing_growth_analysis <- HGI_data %>%
@@ -986,14 +1036,14 @@ housing_growth_analysis <- HGI_data %>%
   mutate(Housing_Growth_Score = (HGI_Index + HGR_Index) / 2)
 
 # --- 2. Data Preparation for Tables (Latest Year: 2023) ---
-
 latest_year <- max(housing_growth_analysis$year)
+
 latest_year_df <- housing_growth_analysis %>%
   filter(year == latest_year) %>%
   select(NAME, HGI_Index, HGR_Index, Housing_Growth_Score)
 
 # --- Define Subsets for Top/Bottom 5 ---
-get_top_bottom <- function(df, metric, n=5) {
+get_top_bottom <- function(df, metric, n = 5) {
   df %>%
     arrange(desc({{metric}})) %>%
     slice_head(n = n) %>%
@@ -1007,12 +1057,12 @@ get_top_bottom <- function(df, metric, n=5) {
 # HGI Top/Bottom Table
 HGI_top_bottom <- get_top_bottom(latest_year_df, HGI_Index) %>%
   mutate(Category = c(rep("Highest HGI", 5), rep("Lowest HGI", 5))) %>%
-  select(Category, 'Metropolitan Area' = NAME, 'HGI Index' = HGI_Index, 'HGR Index' = HGR_Index)
+  select(Category, 'Metropolitan Area' = NAME, 'HGI Index' = HGI_Index, 'HGR Index' = HGR_Index, 'HGS' = Housing_Growth_Score)
 
 # HGR Top/Bottom Table
 HGR_top_bottom <- get_top_bottom(latest_year_df, HGR_Index) %>%
   mutate(Category = c(rep("Highest HGR", 5), rep("Lowest HGR", 5))) %>%
-  select(Category, 'Metropolitan Area' = NAME, 'HGI Index' = HGI_Index, 'HGR Index' = HGR_Index)
+  select(Category, 'Metropolitan Area' = NAME, 'HGI Index' = HGI_Index, 'HGR Index' = HGR_Index, 'HGS' = Housing_Growth_Score)
 
 # HGS Top/Bottom Table
 HGS_top_bottom <- get_top_bottom(latest_year_df, Housing_Growth_Score) %>%
@@ -1020,7 +1070,6 @@ HGS_top_bottom <- get_top_bottom(latest_year_df, Housing_Growth_Score) %>%
   select(Category, 'Metropolitan Area' = NAME, 'HGS' = Housing_Growth_Score, 'HGI Index' = HGI_Index, 'HGR Index' = HGR_Index)
 
 # --- 3. DT Table Generation ---
-
 # JavaScript callback for highlighting rows (Top 5 Yellow, Bottom 5 Blue)
 js_callback <- DT::JS(
   "function(row, data, index) {
@@ -1033,19 +1082,21 @@ js_callback <- DT::JS(
 )
 
 dt_options <- list(
-    dom = 't',
-    rowCallback = js_callback,
-    columnDefs = list(list(className = 'dt-center', targets = '_all'))
+  dom = 't',
+  rowCallback = js_callback,
+  columnDefs = list(list(className = 'dt-center', targets = '_all'))
 )
 
 # Function to display DT table
 display_dt <- function(data, title) {
-    data_rounded <- data %>% mutate(across(where(is.numeric), ~ round(.x, 3)))
-    DT::datatable(
-        data_rounded,
-        options = dt_options,
-        caption = paste0(title, " in ", latest_year, ". Top 5 (Yellow), Bottom 5 (Blue).")
-    )
+  data_rounded <- data %>% 
+    mutate(across(where(is.numeric), ~ round(.x, 3)))
+  
+  DT::datatable(
+    data_rounded,
+    options = dt_options,
+    caption = paste0(title, " in ", latest_year, ". Top 5 (Yellow), Bottom 5 (Blue).")
+  )
 }
 ```
 
@@ -1072,57 +1123,99 @@ display_dt(HGS_top_bottom, "Top 5 Highest and Lowest Composite Housing Growth Sc
 
 ## Preparation and Calculation:
 ```{r}
-
 library(dplyr)
 library(readr)
 library(ggplot2)
 library(scales) 
 
 # --- 1. Load and Prepare Core Data ---
-pop_data <- read_csv("B01003_001_cbsa_2009_2023.csv")
-pop_data <- pop_data %>% rename(total_population = B01003_001) %>% select(GEOID, NAME, year, total_population)
+POPULATION <- get_acs_all_years("B01003_001") %>%
+  rename(total_population = B01003_001) %>%
+  select(GEOID, NAME, year, total_population)
 
-income_data <- read_csv("B19013_001_cbsa_2009_2023.csv")
-income_data <- income_data %>% rename(med_income = B19013_001) %>% select(GEOID, year, med_income)
+INCOME <- get_acs_all_years("B19013_001") %>%
+  rename(med_income = B19013_001) %>%
+  select(GEOID, year, med_income)
 
-rent_data <- read_csv("B25064_001_cbsa_2009_2023.csv")
-rent_data <- rent_data %>% rename(med_rent = B25064_001) %>% select(GEOID, year, med_rent)
+RENT <- get_acs_all_years("B25064_001") %>%
+  rename(med_rent = B25064_001) %>%
+  select(GEOID, year, med_rent)
 
-permits_data <- read_csv("housing_units_2009_2023.csv")
-permits_data <- permits_data %>% rename(GEOID = CBSA, new_permits = new_housing_units_permitted) %>% select(GEOID, year, new_permits)
-
+PERMITS <- get_building_permits() %>%
+  rename(GEOID = CBSA, new_permits = new_housing_units_permitted) %>%
+  select(GEOID, year, new_permits)
 
 # --- 2. Calculate Rent Burden Index (RBI) ---
-rent_burden_data <- inner_join(rent_data, income_data, by = c("GEOID", "year"))
-rent_burden_data <- rent_burden_data %>% mutate(RB_raw = (med_rent * 12) / med_income) %>% filter(RB_raw > 0 & is.finite(RB_raw))
-RB_baseline_2009 <- rent_burden_data %>% filter(year == 2009) %>% summarise(avg = mean(RB_raw, na.rm = TRUE)) %>% pull(avg)
-rent_burden_data <- rent_burden_data %>% mutate(RBI_Index = RB_raw / RB_baseline_2009) %>% select(GEOID, year, RBI_Index)
+rent_burden_data <- inner_join(RENT, INCOME, by = c("GEOID", "year"))
+rent_burden_data <- rent_burden_data %>%
+  mutate(RB_raw = (med_rent * 12) / med_income) %>%
+  filter(RB_raw > 0 & is.finite(RB_raw))
 
+RB_baseline_2009 <- rent_burden_data %>%
+  filter(year == 2009) %>%
+  summarise(avg = mean(RB_raw, na.rm = TRUE)) %>%
+  pull(avg)
+
+rent_burden_data <- rent_burden_data %>%
+  mutate(RBI_Index = RB_raw / RB_baseline_2009) %>%
+  select(GEOID, year, RBI_Index)
 
 # --- 3. Calculate Housing Growth Score (HGS) ---
-growth_data <- inner_join(pop_data, permits_data, by = c("GEOID", "year"))
-growth_data <- growth_data %>% arrange(GEOID, year) %>% group_by(GEOID) %>%
-  mutate(pop_5yr_ago = lag(total_population, n = 5, default = NA), pop_growth_5yr = total_population - pop_5yr_ago) %>%
-  ungroup() %>% filter(year >= 2014)
+growth_data <- inner_join(POPULATION, PERMITS, by = c("GEOID", "year"))
+growth_data <- growth_data %>%
+  arrange(GEOID, year) %>%
+  group_by(GEOID) %>%
+  mutate(
+    pop_5yr_ago = lag(total_population, n = 5, default = NA),
+    pop_growth_5yr = total_population - pop_5yr_ago
+  ) %>%
+  ungroup() %>%
+  filter(year >= 2014)
 
-HGI_data <- growth_data %>% mutate(HGI_raw = (new_permits / total_population) * 1000)
-HGI_baseline_2014 <- HGI_data %>% filter(year == 2014) %>% summarise(avg = mean(HGI_raw, na.rm = TRUE)) %>% pull(avg)
-HGI_data <- HGI_data %>% mutate(HGI_Index = HGI_raw / HGI_baseline_2014) %>% select(GEOID, year, HGI_Index)
+HGI_data <- growth_data %>%
+  mutate(HGI_raw = (new_permits / total_population) * 1000)
 
-HGR_data <- growth_data %>% filter(!is.na(pop_growth_5yr)) %>% mutate(HGR_raw = new_permits / (pop_growth_5yr + 1))
-HGR_baseline_2014 <- HGR_data %>% filter(year == 2014) %>% summarise(avg = mean(HGR_raw[is.finite(HGR_raw)], na.rm = TRUE)) %>% pull(avg)
-HGR_data <- HGR_data %>% mutate(HGR_raw = ifelse(is.finite(HGR_raw), HGR_raw, NA), HGR_Index = HGR_raw / HGR_baseline_2014) %>% select(GEOID, year, HGR_Index)
+HGI_baseline_2014 <- HGI_data %>%
+  filter(year == 2014) %>%
+  summarise(avg = mean(HGI_raw, na.rm = TRUE)) %>%
+  pull(avg)
 
-housing_growth_analysis <- HGI_data %>% inner_join(HGR_data, by = c("GEOID", "year")) %>% filter(!is.na(HGI_Index) & !is.na(HGR_Index)) %>% mutate(Housing_Growth_Score = (HGI_Index + HGR_Index) / 2)
+HGI_data <- HGI_data %>%
+  mutate(HGI_Index = HGI_raw / HGI_baseline_2014) %>%
+  select(GEOID, year, HGI_Index)
+
+HGR_data <- growth_data %>%
+  filter(!is.na(pop_growth_5yr)) %>%
+  mutate(HGR_raw = new_permits / (pop_growth_5yr + 1))
+
+HGR_baseline_2014 <- HGR_data %>%
+  filter(year == 2014) %>%
+  summarise(avg = mean(HGR_raw[is.finite(HGR_raw)], na.rm = TRUE)) %>%
+  pull(avg)
+
+HGR_data <- HGR_data %>%
+  mutate(
+    HGR_raw = ifelse(is.finite(HGR_raw), HGR_raw, NA),
+    HGR_Index = HGR_raw / HGR_baseline_2014
+  ) %>%
+  select(GEOID, year, HGR_Index)
+
+housing_growth_analysis <- HGI_data %>%
+  inner_join(HGR_data, by = c("GEOID", "year")) %>%
+  filter(!is.na(HGI_Index) & !is.na(HGR_Index)) %>%
+  mutate(Housing_Growth_Score = (HGI_Index + HGR_Index) / 2)
 
 # --- 4. Merge All Metrics & Calculate YIMBY Criteria Variables (2009-2023) ---
-full_analysis_data <- inner_join(pop_data, rent_burden_data, by = c("GEOID", "year"))
-full_analysis_data <- full_analysis_data %>% inner_join(housing_growth_analysis, by = c("GEOID", "year")) %>% arrange(GEOID, year)
+full_analysis_data <- inner_join(POPULATION, rent_burden_data, by = c("GEOID", "year"))
+full_analysis_data <- full_analysis_data %>%
+  inner_join(housing_growth_analysis, by = c("GEOID", "year")) %>%
+  arrange(GEOID, year)
 
 start_year <- min(full_analysis_data$year)
 end_year <- max(full_analysis_data$year)
 
-yimby_criteria <- full_analysis_data %>% filter(year == start_year | year == end_year | year >= 2014) %>%
+yimby_criteria <- full_analysis_data %>%
+  filter(year == start_year | year == end_year | year >= 2014) %>%
   group_by(GEOID, NAME) %>%
   summarise(
     initial_RB_Index = RBI_Index[year == start_year],
@@ -1141,9 +1234,12 @@ yimby_cbsas <- yimby_criteria %>%
   arrange(desc(avg_HGS_2014_2023))
 
 # Prepare data for plotting
-plot1_data <- yimby_criteria %>% mutate(is_yimby_candidate = (initial_RB_Index > 1.0) & (pop_growth > 0))
+plot1_data <- yimby_criteria %>%
+  mutate(is_yimby_candidate = (initial_RB_Index > 1.0) & (pop_growth > 0))
+
 top_yimby_names <- head(yimby_cbsas, 5)$NAME
-plot1_data <- plot1_data %>% mutate(label = ifelse(NAME %in% top_yimby_names, NAME, ""))
+plot1_data <- plot1_data %>%
+  mutate(label = ifelse(NAME %in% top_yimby_names, NAME, ""))
 
 plot2_data <- full_analysis_data %>%
   filter(NAME %in% yimby_cbsas$NAME) %>%
