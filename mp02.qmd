@@ -660,7 +660,7 @@ p_all <- ggplot(plot_data_all, aes(x = year, y = avg_household_size, group = GEO
 print(p_all)
 
 ```
-# Task 4: Rent Burden
+# Task 4: Rent Burden:
 
 ## 1: Standardization & Scaling and transformation:
 ```{r}
