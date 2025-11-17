@@ -337,28 +337,6 @@ cat("Trees joined to districts. Total rows:", nrow(trees_in_districts), "\n")
 
 # Task 4: District Level analysis:
 
-## Question 1: Which council district has the most trees?
-
-
-
-```{r}
-
-#| label: most-trees
-
-trees_per_district <- trees_in_districts |>
-  sf::st_drop_geometry() |>
-  dplyr::group_by(council_district = CounDist) |>
-  dplyr::summarise(n_trees = dplyr::n(), .groups = "drop") |>
-  dplyr::arrange(dplyr::desc(n_trees))
-
-most_trees <- trees_per_district |> dplyr::slice(1)
-
-cat("District with most trees: District", most_trees$council_district, 
-    "with", most_trees$n_trees, "trees\n")
-
-
-```
-
 
 ## Question 1: Which council district has the most trees?
 
