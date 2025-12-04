@@ -1,0 +1,1057 @@
+---
+title: "Mini-Project 04 - Just the Fact(-Check)s, Ma'am!"
+author: "Daniel Ohebshalom"
+date: "12-05-2025"
+format: 
+  html:
+    code-fold: true
+    theme: pulse
+    toc: true
+    message: false
+    warning: false
+    cache: true
+execute:
+  freeze: false
+---
+
+# Introduction
+
+The Bureau of Labor Statistics (BLS) releases the Current Employment Statistics Report (CES) on a monthly basis, which is the backbone behind mainstream news coverage and all the jargon that comes with it. The CES covers how many people are employed each month in the United States. 
+
+As more data is released to the BLS, these number are later revised, which is viewed as highly controversial amongst the US Populous due to claims of manipulation both on the corporate and government side of things to drive up conversation.
+
+# Data Acquisition and Preparation
+
+Using the httr2 and rvest packages, we will be scraping and acquring data from the data.bls.gov page spanning from 1979 to 2025. The process is as follows:
+
+## Package Import
+```{r}
+library(httr2)
+library(rvest)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(lubridate)
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(gganimate)
+library(DiagrammeR)
+library(gt)
+library(DT)
+library(htmltools)
+library(knitr)
+library(scales)
+library(purrr)
+```
+
+# Task 1: Accessing and Extracting NonFarm Payroll Tables
+
+These are the raw numbers and statistics from the Bureau of Labor Statistics from 1979-2025, detailing how many nonfarm paid workers are employed in the United States in a given month
+
+```{r}
+
+# Endpoint
+post_url <- "https://data.bls.gov/pdq/SurveyOutputServlet"
+
+# Forming Data from BLS website using Devtools
+form_fields <- list(
+  "request_action"      = "get_data",
+  "reformat"            = "true",
+  "from_results_page"   = "true",
+  "from_year"           = "1979",
+  "to_year"             = "2025",
+  "Go.x"                = "19",
+  "Go.y"                = "9",
+  "initial_request"     = "false",
+  "data_tool"           = "surveymost",
+  "series_id"           = "CES0000000001",
+  "years_option"        = "specific_years"
+)
+
+# Optional headers and Web Fetch (Avoid Error 403)
+headers_list <- list(
+  Referer    = "https://data.bls.gov/toppicks?survey=ce",
+  `User-Agent` = "Chrome/142.0.7444.176 (compatible; R httr2)"
+)
+
+# HTML POST request
+req <- request(post_url) %>%
+  req_method("POST") %>%
+  req_headers(!!!headers_list) %>%
+  req_body_form(!!!form_fields)
+```
+
+## BLS Data Extraction
+
+```{r}
+# Perform Request
+
+resp <- req_perform(req)
+
+# Parse HTML and extract table 
+html <- resp_body_html(resp, encoding = "UTF-8")
+
+# pick table with most rows (usually the main data table)
+tables <- html %>% html_nodes("table")
+tr_counts <- map_int(tables, ~ length(html_nodes(.x, "tr")))
+table_node <- tables[[which.max(tr_counts)]]
+
+raw_tbl <- table_node %>% html_table(fill = TRUE)
+
+# Fix first column name if blank
+if (names(raw_tbl)[1] == "" | is.na(names(raw_tbl)[1])) {
+  names(raw_tbl)[1] <- "year"
+}
+names(raw_tbl)[1] <- "year"
+
+# Pivot and clean
+ces_payroll <- raw_tbl %>%
+  pivot_longer(cols = -year, names_to = "month", values_to = "level_raw") %>%
+  mutate(
+    month  = str_trim(month),
+    ym_str = paste(year, month),
+    date   = suppressWarnings(ym(ym_str)),
+    date   = if_else(
+               is.na(date),
+               suppressWarnings(parse_date_time(ym_str, orders = c("Y b", "Y B", "Y m"))),
+               date
+             ),
+    date   = as.Date(date),
+    level = suppressWarnings(parse_number(level_raw))
+  ) %>%
+  select(date, level) %>%
+  drop_na(date, level) %>%
+  arrange(date) %>%
+  filter(date <= as_date("2025-06-01"))
+
+```
+
+# Task 2: Accesing and extracting CES Revisions Tables:
+
+These tables are created annually and contain the original estimated employment from the BLS, the final employment,and the resulting revision amount from the two numbers. The extracting process combines all annual tables into a single dataset sorted chronologically for proper analysis.
+
+```{r}
+
+# You must fetch the page to avoid error 403
+
+fetch_bls_page <- function() {
+  request("https://www.bls.gov/web/empsit/cesnaicsrev.htm") %>%
+    req_user_agent(
+      "Chrome/142.0.7444.176"
+    ) %>%
+    req_headers(
+      Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      `Accept-Language` = "en-US,en;q=0.9",
+      Referer = "https://www.bls.gov/"
+    ) %>%
+    req_perform() %>%
+    resp_body_html()
+}
+
+
+# Function to extract CES revisions for a single year
+
+get_ces_year <- function(year, page_html) {
+  
+  # Select the table body for this year
+  node <- page_html %>% html_node(sprintf("table#%s tbody", year))
+  if (is.null(node)) stop("Could not find table for year ", year)
+  
+  # Extract table (header = FALSE)
+  raw_tbl <- node %>% html_table(header = FALSE, fill = TRUE)
+  
+  # Keep first 12 rows (12 months of the year)
+  tbl <- raw_tbl[1:12]
+  
+  # Extract columns 1, 3, 5
+  month_col    <- as.character(tbl[[1]])
+  original_col <- as.numeric(gsub("[^0-9\\-]", "", tbl[[3]]))  # remove commas, spaces
+  final_col    <- as.numeric(gsub("[^0-9\\-]", "", tbl[[5]]))
+  
+  # Compute revision
+  revision_col <- final_col - original_col
+  
+  # Build dates
+  date_col <- ym(paste(year, month_col))
+  
+  # Assemble final data frame
+  data.frame(
+    date = date_col,
+    original = original_col,
+    final = final_col,
+    revision = revision_col
+  )
+}
+
+
+# Fetch page once
+
+page_html <- fetch_bls_page()
+
+# Loop over all years 1979-2025
+
+years <- 1979:2025
+
+#Bring it all together
+
+ces_revisions <- map_df(years, ~ get_ces_year(.x, page_html)) %>%
+  arrange(date)
+
+# For 2025, keep only Jan–Jun (filter out any beyond June)
+ces_revisions <- ces_revisions %>%
+  filter(date <= as_date("2025-06-01")) %>%
+  mutate(date = as.Date(date))
+
+cat("Revisions data summary:\n")
+cat("Rows:", nrow(ces_revisions), "\n")
+cat("Date range:", min(ces_revisions$date), "to", max(ces_revisions$date), "\n\n")
+
+datatable(ces_revisions,
+          options = list(pageLength = 10, scrollX = TRUE),
+          caption = "CES Monthly Revisions (1979-2025)")
+```
+
+
+## Loading and Cleaning the Data for Exporatory analysis
+
+Now that we possess both the raw and the revised datasets, we are ready to bring them together and perform a true analysis of the historic employment levels and their changes over time. As this data is not perfect and incomplete in some places after scraping, it must be cleaned and properly structured before going through the verification and later the analysis portion of MP04. Such discrepancies present in the data include entries that are outside the 1979-2025 scope and irregular entries that need to be altered in oder to be read and analyzed properly. Note that level means total recorded employement during this span.
+
+### Load CES Payroll Data
+```{r}
+library(DT)
+
+# Display summary
+cat("Payroll data summary:\n")
+cat("Rows:", nrow(ces_payroll), "\n")
+cat("Date range:", min(ces_payroll$date), "to", max(ces_payroll$date), "\n\n")
+
+# Display as interactive datatable
+datatable(ces_payroll, 
+          options = list(pageLength = 10, scrollX = TRUE),
+          caption = "CES Total Nonfarm Payroll (1979-2025)")
+
+```
+
+### Load CES Revisions Data
+```{r}
+# Display summary
+cat("Revisions data summary:\n")
+cat("Rows:", nrow(ces_revisions), "\n")
+cat("Date range:", min(ces_revisions$date), "to", max(ces_revisions$date), "\n\n")
+
+# Display as interactive datatable
+datatable(ces_revisions,
+          options = list(pageLength = 10, scrollX = TRUE),
+          caption = "CES Monthly Revisions (1979-2025)")
+```
+
+### Combine Payroll and Revisions
+```{r}
+# Join the two datasets on date
+ces_combined <- ces_payroll %>%
+  left_join(ces_revisions, by = "date") %>%
+  mutate(date = as.Date(date)) %>%
+  arrange(date)
+
+# Display combined dataset summary
+cat("Combined dataset summary:\n")
+cat("Rows:", nrow(ces_combined), "\n")
+cat("Columns:", paste(colnames(ces_combined), collapse = ", "), "\n\n")
+
+# Display as interactive datatable
+datatable(ces_combined,
+          options = list(pageLength = 10, scrollX = TRUE),
+          caption = "Combined CES Payroll and Revisions Data")
+```
+
+
+
+# Task 3: Data Exploration and Visualizaton
+
+Now that we have the data loaded, it is time to analyze the two sets for statistics and visualizations of various trends and infographs over the last 45 years of data collection.
+
+## Statisitcal CES Statisitics:
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(DT)
+
+# Create ces_stats from ces_combined
+ces_stats <- ces_combined |>
+  filter(!is.na(revision)) |>
+  mutate(
+    year = year(date),
+    decade = floor(year / 10) * 10,
+    abs_revision = abs(revision),
+    pct_revision = (abs_revision / final) * 100,
+    positive_revision = revision > 0
+  )
+
+# Prepare data with era classification
+ces_analysis <- ces_stats |>
+  mutate(
+    era = case_when(
+      year < 2000 ~ "Pre-2000",
+      year >= 2000 & year < 2020 ~ "2000-2019",
+      year >= 2020 ~ "Post-2020"
+    )
+  )
+
+# Create ces_stats from ces_combined
+ces_stats <- ces_combined |>
+  filter(!is.na(revision)) |>
+  mutate(
+    year = year(date),
+    decade = floor(year / 10) * 10,
+    abs_revision = abs(revision),
+    pct_revision = (abs_revision / final) * 100,
+    positive_revision = revision > 0
+  )
+
+# Prepare data with era classification
+ces_analysis <- ces_stats |>
+  mutate(
+    era = case_when(
+      year < 2000 ~ "Pre-2000",
+      year >= 2000 & year < 2020 ~ "2000-2019",
+      year >= 2020 ~ "Post-2020"
+    )
+  )
+
+
+# Add presidential partisan data
+
+library(tidyverse)
+presidents_party <- tidyr::expand_grid(year=1979:2025, 
+                                       month = month.name, 
+                                       president = NA, 
+                                       party = NA) |> 
+    mutate(president = case_when(
+        (month == "January")  & (year == 1979) ~ "Carter",
+        # BLS jobs reports come out on the first Friday, so February
+        # is the first time a new president 'owns' the jobs number 
+        (month == "February") & (year == 1981) ~ "Reagan",
+        (month == "February") & (year == 1989) ~ "Bush 41",
+        (month == "February") & (year == 1993) ~ "Clinton",
+        (month == "February") & (year == 2001) ~ "Bush 43",
+        (month == "February") & (year == 2009) ~ "Obama",
+        (month == "February") & (year == 2017) ~ "Trump I",
+        (month == "February") & (year == 2021) ~ "Biden",
+        (month == "February") & (year == 2025) ~ "Trump II",
+    )) |>
+    tidyr::fill(president) |>
+    mutate(party = if_else(president %in% c("Carter", "Clinton", "Obama", "Biden"), 
+                           "D", 
+                           "R")) 
+
+```
+
+### Analysis 1: Largest Positive and Negative Revisions by Era
+```{r}
+
+largest_by_era <- ces_analysis |>
+  filter(!is.na(revision)) |>
+  group_by(era) |>
+  summarise(
+    max_positive = max(revision),
+    min_negative = min(revision),
+    mean_abs_revision = mean(abs_revision),
+    median_abs_revision = median(abs_revision),
+    sd_abs_revision = sd(abs_revision),
+    n_months = n(),
+    .groups = 'drop'
+  ) |>
+  arrange(factor(era, levels = c("Pre-2000", "2000-2019", "Post-2020")))
+
+datatable(largest_by_era, 
+          caption = "Largest Revisions and Summary Statistics by Era",
+          options = list(pageLength = 10))
+
+# Find specific dates of largest revisions in each era
+cat("\n\nDetailed breakdown of largest revisions:\n\n")
+
+for (e in c("Pre-2000", "2000-2019", "Post-2020")) {
+  cat("--- ", e, " ---\n")
+  
+  era_data <- ces_analysis |>
+    filter(era == e, !is.na(revision))
+  
+  largest_pos <- era_data |>
+    filter(revision == max(revision)) |>
+    select(date, revision, final, pct_revision) |>
+    mutate(type = "Largest Positive")
+  
+  largest_neg <- era_data |>
+    filter(revision == min(revision)) |>
+    select(date, revision, final, pct_revision) |>
+    mutate(type = "Largest Negative")
+  
+  print(bind_rows(largest_pos, largest_neg))
+  cat("\n")
+}
+```
+
+
+### Analysis 2: Top 10 Largest Negative Revisions (All Time)
+```{r}
+library(tidyverse)
+library(DT)
+
+top_10_negative <- ces_analysis |>
+  mutate(
+    year = year(date),
+    month_abbr = as.character(month(date, label = TRUE)),
+    month = month.name[month(date)]  # Convert abbreviation to full name
+  ) |>
+  left_join(
+    presidents_party |>
+      mutate(month = as.character(month)),
+    by = c("year" = "year", "month" = "month")
+  ) |>
+  filter(!is.na(revision)) |>
+  arrange(revision) |>
+  slice(1:50) |>
+  select(date, year, month, president, party, revision, final, pct_revision, era) |>
+  mutate(rank = row_number())
+
+datatable(top_10_negative,
+          caption = "Top 50 Largest Negative (Downward) Revisions",
+          options = list(pageLength = 10))
+```
+
+### Analysis 3: Pre-2020 vs Post-2020 Average % Revision Comparison
+```{r}
+cat("(DIRECTLY ADDRESSES TRUMP'S CONCERN OF COOKING THE BOOKS)\n\n")
+
+era_comparison <- ces_analysis |>
+  filter(!is.na(revision) & final > 0) |>  # Add filter for final > 0
+  mutate(pre_post = if_else(year < 2020, "Pre-2020", "Post-2020")) |>
+  group_by(pre_post) |>
+  summarise(
+    mean_revision = mean(revision, na.rm = TRUE),
+    mean_abs_revision = mean(abs_revision, na.rm = TRUE),
+    mean_pct_revision = mean(pct_revision, na.rm = TRUE),
+    median_abs_revision = median(abs_revision, na.rm = TRUE),
+    sd_pct_revision = sd(pct_revision, na.rm = TRUE),
+    n_months = n(),
+    .groups = 'drop'
+  )
+
+datatable(era_comparison,
+          caption = "Pre-2020 vs Post-2020 Revision Comparison",
+          options = list(pageLength = 10))
+
+# Calculate the difference
+pre_2020_mean <- era_comparison |> filter(pre_post == "Pre-2020") |> pull(mean_pct_revision)
+post_2020_mean <- era_comparison |> filter(pre_post == "Post-2020") |> pull(mean_pct_revision)
+difference <- post_2020_mean - pre_2020_mean
+pct_increase <- (difference / pre_2020_mean) * 100
+
+cat("\n\nKEY FINDING:\n")
+cat("Pre-2020 average % revision:", round(pre_2020_mean, 4), "%\n")
+cat("Post-2020 average % revision:", round(post_2020_mean, 4), "%\n")
+cat("Difference:", round(difference, 4), "percentage points\n")
+cat("Percent decrease:", round(pct_increase, 2), "%\n")
+```
+
+### Analysis 4: Which Calendar Months Overall Have Highest % Positive Revisions?
+```{r}
+
+monthly_pattern <- ces_analysis |>
+  filter(!is.na(revision)) |>
+  mutate(month_name = month(date, label = TRUE)) |>
+  group_by(month_name) |>
+  summarise(
+    pct_positive = mean(positive_revision) * 100,
+    pct_negative = (1 - mean(positive_revision)) * 100,
+    n_total = n(),
+    mean_abs_revision = mean(abs_revision),
+    .groups = 'drop'
+  ) |>
+  arrange(desc(pct_positive))
+
+datatable(monthly_pattern,
+          caption = "Seasonal Patterns: % of Positive vs Negative Revisions by Month",
+          options = list(pageLength = 12))
+
+cat("\n\nINTERPRETATION:\n")
+cat("Months with HIGHEST % positive revisions (upward revisions):\n")
+print(head(monthly_pattern |> select(month_name, pct_positive, n_total), 3))
+
+cat("\n\nMonths with LOWEST % positive revisions (more downward revisions):\n")
+print(tail(monthly_pattern |> select(month_name, pct_positive, n_total), 3))
+
+cat("\n\nPOSSIBLE EXPLANATIONS:\n")
+cat("- January: Preliminary estimates made in winter with incomplete data\n")
+cat("- August/September: Summer hiring changes, back-to-school employment\n")
+cat("- December/January: Holiday season employment fluctuations\n")
+cat("- First month of quarter (Jan, April, July, October): Catching up on prior quarter data issues\n")
+```
+
+
+### Analysis 5 : Annual Rolling Standard Deviation by Era (Revision Volatility):
+
+INTERPRETATION:
+
+Higher rolling SD = revisions are more unpredictable
+
+If Post-2020 > Pre-2020, suggests recent revisions are less stable
+
+If Post-2020 < Pre-2020, suggests recent revisions follow more predictable patterns
+
+```{r}
+
+# Calculate 12-month rolling standard deviation manually
+rolling_volatility <- ces_stats %>%
+  arrange(date) %>%
+  filter(!is.na(revision)) %>%
+  mutate(
+    year = year(date),
+    # Create lag columns for 12-month window
+    rolling_sd_revision = sapply(row_number(), function(i) {
+      start_idx <- max(1, i - 11)
+      if (i < 12) return(NA_real_)
+      sd(revision[start_idx:i], na.rm = TRUE)
+    }),
+    rolling_sd_abs = sapply(row_number(), function(i) {
+      start_idx <- max(1, i - 11)
+      if (i < 12) return(NA_real_)
+      sd(abs_revision[start_idx:i], na.rm = TRUE)
+    }),
+    rolling_sd_pct = sapply(row_number(), function(i) {
+      start_idx <- max(1, i - 11)
+      if (i < 12) return(NA_real_)
+      sd(pct_revision[start_idx:i], na.rm = TRUE)
+    })
+  ) %>%
+  drop_na(rolling_sd_revision)
+
+# Summary statistics by era
+cat("\n\n=== VOLATILITY STATISTICS BY ERA ===\n\n")
+
+volatility_by_era <- rolling_volatility %>%
+  mutate(
+    era = case_when(
+      year < 2000 ~ "Pre-2000",
+      year >= 2000 & year < 2020 ~ "2000-2019",
+      year >= 2020 ~ "Post-2020"
+    )
+  ) %>%
+  group_by(era) %>%
+  summarise(
+    mean_volatility_raw = mean(rolling_sd_revision, na.rm = TRUE),
+    median_volatility_raw = median(rolling_sd_revision, na.rm = TRUE),
+    max_volatility_raw = max(rolling_sd_revision, na.rm = TRUE),
+    min_volatility_raw = min(rolling_sd_revision, na.rm = TRUE),
+    mean_volatility_abs = mean(rolling_sd_abs, na.rm = TRUE),
+    mean_volatility_pct = mean(rolling_sd_pct, na.rm = TRUE),
+    n_months = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(factor(era, levels = c("Pre-2000", "2000-2019", "Post-2020")))
+
+datatable(volatility_by_era,
+          caption = "Volatility Statistics by Era",
+          options = list(pageLength = 10))
+
+# Year-by-year volatility
+cat("\n\n=== AVERAGE VOLATILITY BY YEAR ===\n\n")
+
+volatility_by_year <- rolling_volatility %>%
+  group_by(year) %>%
+  summarise(
+    mean_sd_revision = mean(rolling_sd_revision, na.rm = TRUE),
+    mean_sd_abs = mean(rolling_sd_abs, na.rm = TRUE),
+    mean_sd_pct = mean(rolling_sd_pct, na.rm = TRUE),
+    n_months = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(mean_sd_revision))
+
+datatable(volatility_by_year,
+          caption = "Average Volatility by Year",
+          options = list(pageLength = 20))
+
+# Key insights
+cat("\n\n=== KEY FINDINGS ===\n\n")
+
+pre_2020_vol <- volatility_by_era %>%
+  filter(era %in% c("Pre-2000", "2000-2019")) %>%
+  pull(mean_volatility_raw) %>%
+  mean()
+
+post_2020_vol <- volatility_by_era %>%
+  filter(era == "Post-2020") %>%
+  pull(mean_volatility_raw)
+
+volatility_increase <- ((post_2020_vol - pre_2020_vol) / pre_2020_vol) * 100
+
+cat("Pre-2020 average volatility (SD of revisions):", round(pre_2020_vol, 4), "\n")
+cat("Post-2020 average volatility (SD of revisions):", round(post_2020_vol, 4), "\n")
+cat("Increase:", round(volatility_increase, 2), "%\n\n")
+
+# Most volatile year
+most_volatile_year <- volatility_by_year %>% slice_max(mean_sd_revision, n = 1)
+cat("Most volatile year:", most_volatile_year$year, 
+    "with avg volatility of", round(most_volatile_year$mean_sd_revision, 4), "\n")
+
+# Least volatile year
+least_volatile_year <- volatility_by_year %>% slice_min(mean_sd_revision, n = 1)
+cat("Least volatile year:", least_volatile_year$year,
+    "with avg volatility of", round(least_volatile_year$mean_sd_revision, 4), "\n")
+
+```
+
+### Analysis 6: Normalized Revision Ratio (Revision / Employment Level)
+
+KEY INSIGHT:
+
+This addresses the 'working population is larger' argument:
+
+If revisions are growing WITH the employment level, normalized ratios should be stable
+
+If normalized ratios are increasing, revisions are growing faster than employment
+
+
+```{r}
+cat("=== NORMALIZED REVISION RATIO: REVISION AS % OF EMPLOYMENT LEVEL ===\n\n")
+
+normalized_analysis <- ces_analysis |>
+  filter(!is.na(revision) & !is.na(level)) |>
+  mutate(
+    normalized_ratio = abs_revision / level,
+    pct_of_level = (abs_revision / level) * 100
+  ) |>
+  group_by(era) |>
+  summarise(
+    mean_normalized_ratio = mean(normalized_ratio, na.rm = TRUE),
+    median_normalized_ratio = median(normalized_ratio, na.rm = TRUE),
+    mean_pct_of_level = mean(pct_of_level, na.rm = TRUE),
+    sd_pct_of_level = sd(pct_of_level, na.rm = TRUE),
+    max_pct_of_level = max(pct_of_level, na.rm = TRUE),
+    n_months = n(),
+    .groups = 'drop'
+  ) |>
+  arrange(factor(era, levels = c("Pre-2000", "2000-2019", "Post-2020")))
+
+datatable(normalized_analysis,
+          caption = "Normalized Revision Ratios by Era",
+          options = list(pageLength = 10))
+
+# Trend analysis
+pre_2020_norm <- normalized_analysis |> 
+  filter(era %in% c("Pre-2000", "2000-2019")) |> 
+  pull(mean_pct_of_level) |>
+  mean()
+
+post_2020_norm <- normalized_analysis |> 
+  filter(era == "Post-2020") |> 
+  pull(mean_pct_of_level)
+
+cat("Pre-2020 average normalized ratio:", round(pre_2020_norm, 4), "%\n")
+cat("Post-2020 normalized ratio:", round(post_2020_norm, 4), "%\n")
+cat("Difference:", round(post_2020_norm - pre_2020_norm, 4), "percentage points or 1.18%\n")
+```
+
+
+## Visual CES Analysis:
+
+
+### Visualization 1: Heatmap - Year × Month Revision Magnitude
+INTERPRETATION:
+
+Darker colors = larger revision magnitudes
+
+Look for entire rows that are darker = that year had consistently large revisions
+
+Look for columns that are darker = that month tends to have large revisions
+
+Compare 2020-2025 to earlier years to see if recent period looks anomalous
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+
+# Prepare data for heatmap
+heatmap_data <- ces_stats %>%
+  filter(!is.na(revision)) %>%
+  mutate(
+    year = year(date),
+    month_num = month(date),
+    month_name = month(date, label = TRUE)
+  ) %>%
+  select(year, month_num, month_name, abs_revision) %>%
+  arrange(year, month_num)
+
+# Create heatmap
+p_heatmap <- ggplot(heatmap_data, aes(x = month_name, y = year, fill = abs_revision)) +
+  geom_tile(color = "white", linewidth = 0.2) +
+  scale_fill_gradient(
+    low = "white",
+    high = "darkred",
+    name = "Absolute Revision\n(thousands)"
+  ) +
+  scale_y_continuous(breaks = seq(1979, 2025, by = 5), limits = c(1978.5, 2025.5)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  ) +
+  labs(
+    title = "CES Revision Magnitude Heatmap: Year × Month (1979-2025)",
+    subtitle = "Darker red = larger revisions | Look for anomalous years/months",
+    x = "Month",
+    y = "Year",
+    caption = "Source: BLS CES Data"
+  )
+
+print(p_heatmap)
+
+```
+
+### Visualization 2: Line Graph - Monthly Revisions Over Time
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+
+# Prepare data with month and year
+viz2_data <- ces_stats |>
+  filter(!is.na(revision)) |>
+  mutate(
+    month_name = month(date, label = TRUE),
+    month_num = month(date),
+    year = year(date)
+  )
+
+# Create line plot: one line per month, showing revisions over the years
+p2 <- ggplot(viz2_data, aes(x = year, y = revision, color = month_name, group = month_name)) +
+  geom_line(linewidth = 0.8, alpha = 0.7) +
+  geom_point(size = 1.5, alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black", linewidth = 0.5) +
+  scale_color_viridis_d(option = "turbo") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    title = "Monthly Revisions Over Time by Calendar Month (1979-2025)",
+    subtitle = "Each colored line represents one month (Jan-Dec) showing its revision pattern across 46 years",
+    x = "Year",
+    y = "Revision (thousands)",
+    color = "Month",
+    caption = "Source: BLS CES Data"
+  )
+
+print(p2)
+
+# Summary: average revision for each month across all years
+cat("\n\nAverage Revision by Month (Across All Years 1979-2025):\n")
+monthly_summary <- viz2_data |>
+  group_by(month_name) |>
+  summarise(
+    mean_revision = mean(revision),
+    median_revision = median(revision),
+    sd_revision = sd(revision),
+    min_revision = min(revision),
+    max_revision = max(revision),
+    n_years = n(),
+    .groups = 'drop'
+  ) |>
+  arrange(factor(month_name, levels = month.abb))
+
+datatable(monthly_summary,
+          caption = "Average Revision by Month (1979-2025)",
+          options = list(pageLength = 12))
+```
+
+### Visualization 3: Dual-Axis Chart - Employment Level vs Revision
+```{r}
+# Prepare data for dual axis
+viz3_data <- ces_stats |>
+  select(date, level, revision, abs_revision) |>
+  drop_na()
+
+# Calculate scaling factor for secondary axis
+scale_factor <- max(viz3_data$level) / max(viz3_data$abs_revision)
+
+# Create dual-axis plot
+p3 <- ggplot(viz3_data, aes(x = date)) +
+  # Primary axis: Employment level (area under curve)
+  geom_area(aes(y = level, fill = "Employment Level"), alpha = 0.3, color = "steelblue") +
+  geom_line(aes(y = level, color = "Employment Level"), linewidth = 1) +
+  # Secondary axis: Absolute revision (bar chart)
+  geom_col(aes(y = abs_revision * scale_factor, fill = "Revision Magnitude"), alpha = 0.5) +
+  # Dual y-axes
+  scale_y_continuous(
+    name = "Employment Level (thousands)",
+    sec.axis = sec_axis(~ . / scale_factor, name = "Absolute Revision (thousands)")
+  ) +
+  scale_fill_manual(
+    values = c("Employment Level" = "steelblue", "Revision Magnitude" = "red"),
+    guide = "legend"
+  ) +
+  scale_color_manual(
+    values = c("Employment Level" = "steelblue"),
+    guide = "none"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    title = "Employment Level vs Revision Magnitude Over Time (1979-2025)",
+    subtitle = "Blue area: Total nonfarm employment | Red bars: Absolute revision amount",
+    x = "Date",
+    y = "Employment Level (thousands)",
+    caption = "Source: BLS CES Data"
+  )
+
+print(p3)
+```
+
+### Visualization 4: Pre-2020 vs Post-2020 Distrbution of Revision Calculations
+
+INTERPRETATION:
+
+If curves have same shape = revisions behave similarly
+
+If Post-2020 (red) is wider = revisions are more variable/unpredictable
+
+If Post-2020 is shifted right = revisions tend to be larger (positive)
+
+If Post-2020 is shifted left = revisions tend to be larger (negative)
+
+```{r}
+# Prepare data for density plot
+density_data <- ces_stats %>%
+  filter(!is.na(revision)) %>%
+  mutate(
+    year = year(date),
+    period = if_else(year < 2020, "Pre-2020", "Post-2020")
+  )
+
+# Create density plot
+p_density <- ggplot(density_data, aes(x = revision, fill = period, color = period)) +
+  geom_density(alpha = 0.5, linewidth = 1) +
+  scale_fill_manual(values = c("Pre-2020" = "steelblue", "Post-2020" = "red")) +
+  scale_color_manual(values = c("Pre-2020" = "darkblue", "Post-2020" = "darkred")) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 0.8) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  ) +
+  labs(
+    title = "Distribution of CES Revisions: Pre-2020 vs Post-2020",
+    subtitle = "Overlaid density curves show shape and spread of revision distributions",
+    x = "Revision Amount (thousands)",
+    y = "Density",
+    caption = "Source: BLS CES Data"
+  )
+
+print(p_density)
+```
+
+# Task 4: Statistical Inference
+
+To commend the exploratory analysis performed previously, we will perform 2 inferential examinations about the CES revison that may reveal some disturbing facts about today's job market using hypothesis testing.
+
+## Has the fraction of revisions > 1% increased post-2020? 
+
+Null Hypothesis: Fraction of revisions >1% is equal Pre-2020 and Post-2020
+
+A proportion test will be applied to determine if revision size is correlated with employment change.
+
+```{r}
+
+# Prepare data
+test4_data <- ces_analysis %>%
+  filter(!is.na(revision)) %>%
+  mutate(
+    year = year(date),
+    period = if_else(year < 2020, "Pre-2020", "Post-2020"),
+    large_revision = pct_revision > 1.0  # TRUE if revision > 1%, FALSE otherwise
+  ) %>%
+  select(large_revision, period)
+
+# Perform proportion test
+test4_result <- test4_data %>%
+  prop_test(large_revision ~ period, order = c("Pre-2020", "Post-2020"))
+
+cat("Proportion Test Results:\n")
+print(test4_result)
+
+cat("\n\nDETAILED BREAKDOWN:\n")
+
+# Calculate actual proportions
+prop_summary_test4 <- test4_data %>%
+  group_by(period) %>%
+  summarise(
+    num_large_revisions = sum(large_revision),
+    total_revisions = n(),
+    pct_large = (sum(large_revision) / n()) * 100,
+    .groups = 'drop'
+  )
+
+datatable(prop_summary_test4,
+          caption = "Count and Proportion of Revisions > 1%",
+          options = list(pageLength = 10))
+
+cat("\n\n RESULTS AND KEY STATISTICS:\n")
+pre_2020_large <- prop_summary_test4 %>% filter(period == "Pre-2020") %>% pull(pct_large)
+post_2020_large <- prop_summary_test4 %>% filter(period == "Post-2020") %>% pull(pct_large)
+diff_large <- post_2020_large - pre_2020_large
+
+cat("Pre-2020:", round(pre_2020_large, 2), "% of revisions were > 1%\n")
+cat("Post-2020:", round(post_2020_large, 2), "% of revisions were > 1%\n")
+cat("Difference:", round(diff_large, 2), "percentage points\n")
+cat("Relative increase:", round((diff_large / pre_2020_large) * 100, 2), "%\n\n")
+
+if (test4_result$p_value < 0.05) {
+  cat("INTERPRETATION:✓ SIGNIFICANT (p < 0.05): The fraction of large revisions (>1%) IS significantly different\n")
+  if (post_2020_large > pre_2020_large) {
+    cat("  Post-2020 has MORE large revisions than Pre-2020 - SUPPORTS Trump's concern\n")
+  } else {
+    cat("  Post-2020 has FEWER large revisions than Pre-2020 - CONTRADICTS Trump's concern\n")
+  }
+} else {
+  cat("INTERPRETATION: ✗ NOT SIGNIFICANT (p ≥ 0.05): No significant difference in large revision frequency\n")
+  cat("  Observed differences could be due to random variation\n")
+}
+
+cat("\n95% Confidence Innterval for difference:", round(test4_result$lower_ci, 4), "to", round(test4_result$upper_ci, 4), "\n")
+
+
+```
+
+### Results & Analysis:
+
+The proportion test examining whether the fraction of revisions exceeding 1% has increased post-2020 yielded a p-value of `r round(test4_result$p_value, 4)`. The pre-2020 period saw `r round(pre_2020_large, 2)`% of monthly revisions exceed the 1% threshold, while the post-2020 period experienced `r round(post_2020_large, 2)`% of revisions at this magnitude. This represents a `r round(diff_large, 2)` percentage point increase, or roughly a `r round((diff_large / pre_2020_large) * 100, 2)`% relative increase in the frequency of large revisions. The 95% confidence interval for the difference ranges from `r round(test4_result$lower_ci, 4)` to `r round(test4_result$upper_ci, 4)`. Despite the observed increase in the percentage of revisions exceeding 1%, this difference does not reach statistical significance (p ≥ 0.05). 
+
+This suggests that the observed pattern could reasonably occur due to natural variation rather than representing a fundamental shift in BLS methodology or data quality. The absence of statistical significance implies that while recent years may have experienced some larger revisions, the frequency of such events is not dramatically different from historical norms. This finding supports the interpretation that recent revisions, while sometimes substantial, fall within the range of normal variation observed throughout the 45-year study period.
+
+
+## Are revisions larger when CES change is larger? 
+
+Research Question: Do larger employment changes predict larger revisions? We'll answer with a T-Test through measuring revision magnitude when employment change is above/below median (Large Employment Changes vs Revisions)
+
+If YES: Suggests big revisions are justified by volatile employment.
+
+If NO: Suggests revisions are independent of employment volatility.
+ 
+```{r}
+library(tidyverse)
+
+# Prepare data - calculate month-over-month employment change
+test5_data <- ces_stats %>%
+  arrange(date) %>%
+  filter(!is.na(revision) & !is.na(level)) %>%
+  mutate(
+    year = year(date),
+    employment_change = level - lag(level),
+    abs_employment_change = abs(employment_change),
+    period = if_else(year < 2020, "Pre-2020", "Post-2020")
+  ) %>%
+  drop_na(employment_change)
+
+median_emp_change <- median(test5_data$abs_employment_change, na.rm = TRUE)
+
+test5_binary <- test5_data %>%
+  mutate(
+    large_emp_change = abs_employment_change > median_emp_change
+  ) %>%
+  select(abs_revision, large_emp_change)
+
+test5_ttest <- test5_binary %>%
+  t_test(abs_revision ~ large_emp_change, order = c("TRUE", "FALSE"))
+
+cat("T-Test Results (Large vs Small Employment Changes):\n")
+print(test5_ttest)
+
+cat("\n\nDETAILED COMPARISON:\n")
+
+emp_change_summary <- test5_data %>%
+  mutate(
+    large_emp_change = abs_employment_change > median_emp_change,
+    emp_category = if_else(large_emp_change, "Large Emp Change", "Small Emp Change")
+  ) %>%
+  group_by(emp_category) %>%
+  summarise(
+    mean_revision = mean(abs_revision),
+    median_revision = median(abs_revision),
+    sd_revision = sd(abs_revision),
+    n = n(),
+    .groups = 'drop'
+  )
+
+datatable(emp_change_summary,
+          caption = "Revision Magnitude by Employment Change Size",
+          options = list(pageLength = 10))
+
+if (test5_ttest$p_value < 0.05) {
+  cat("INTERPRETATION: ✓ SIGNIFICANT (p < 0.05): Revisions ARE larger when employment changes are larger\n")
+  cat("  This supports the explanation that big revisions follow big employment swings\n")
+} else {
+  cat("INTERPRETATION: ✗ NOT SIGNIFICANT (p ≥ 0.05): Revision size doesn't depend on employment change\n")
+  cat("  Big revisions occur regardless of employment volatility\n")
+}
+
+cat("\nEstimated difference:", round(test5_ttest$estimate, 4), "thousand\n")
+cat("\n95% Confidence Innterval for difference:", round(test5_ttest$lower_ci, 4), "to", round(test5_ttest$upper_ci, 4), "thousand\n")
+
+library(tidyverse)
+```
+
+
+### Results & Analysis:
+
+
+The two-sample t-test comparing revision magnitudes when employment changes are large versus small revealed a p-value of `r round(test5_ttest$p_value, 4)`. When monthly employment changes exceeded the median of `r round(median_emp_change, 0)` thousand workers, the mean absolute revision was `r round(emp_change_summary %>% filter(emp_category == "Large Emp Change") %>% pull(mean_revision), 2)` thousand. In contrast, months with smaller employment changes had mean absolute revisions of `r round(emp_change_summary %>% filter(emp_category == "Small Emp Change") %>% pull(mean_revision), 2)` thousand. The estimated difference between these groups is `r round(test5_ttest$estimate, 2)` thousand, with a 95% confidence interval of `r round(test5_ttest$lower_ci, 2)` to `r round(test5_ttest$upper_ci, 2)` thousand. 
+
+The lack of statistical significance in this relationship (p ≥ 0.05) indicates that revision magnitude is not systematically tied to the size of employment changes. This finding suggests that large revisions occur relatively independently of employment volatility, which raises concerns about whether the BLS's initial estimation methodology adequately captures labor market dynamics even when employment movements are substantial. If revisions were a natural consequence of large employment swings, we would expect to see this statistical relationship. The absence of such a relationship implies that the drivers of recent large revisions may lie elsewhere—potentially in methodology, data collection challenges, or other systematic factors. This pattern supports the interpretation that recent revisions represent a departure from historical norms rather than simply reflecting normal variation.
+
+
+# Task 5: Fact Checking BLS Claims:
+
+
+## Hypothesis I: Democratic Presidents have more negative revisions and often lie about raw employment numbers to inflate their public perceptions.
+
+Source: [Donald Trump](https://www.politifact.com/factchecks/2024/aug/23/donald-trump/donald-trumps-pants-on-fire-claim-that-biden-harri/): “The Harris-Biden Administration has been caught fraudulently manipulating Job Statistics.” 
+August 21, 2024
+
+Politifact Rating: PANTS ON FIRE
+
+Analysis: This claims that Democratic Administrations since 1979 are lying about the true workforce in America through fraudulent BLS reporting that is trying to kill the American workforce with their policies. Trump claims here that the administration at the time "Falsely created "818,000 jobs".
+
+Historical Evidence: According to the top 50 negative revisions of all time (Analysis 2) and the Monthly Revisions Line and Magnitude graphs to some extent (Visualizations 2 & 3), it is actually Republican Administrations who hold this unfortunate distinction, this can largely be attributed to the COVID-19 Pandemic during Donald Trump's first term and the Great Recession during George W. Bush's presidency dramatically lowering employment numbers, though it can also be attributed to Republican Policies allowing businesses operate in this manner for their own benefit. While Democrats aren't immune to the reporting discrepancies, namely during Jimmy Carter's administration, specifically in this scenario there was zero evidence that the administration was playing with the job numbers to inflate their own image to the general public.
+
+## Hypothesis II: The most egregious month for absolute revisions is September in preparation for EOY valuations.
+
+Source: [Scott Walker](https://www.politifact.com/factchecks/2014/oct/29/scott-walker/scott-walker-says-september-job-growth-largest-sep/): Figures for September 2014’s job growth in Wisconsin mark the "largest private-sector job creation we've had in the month of September in more than a decade"
+October 17, 2014
+
+Politifact Rating: Mostly True
+
+Analysis: This claims that companies will more accurately report their labor statistics in preparation for Q4/Yearly earnings towards the end of the year to seem more enticing to shareholders and in turn drive up their value into the new fiscal year, while also promoting transparent and "audit-Ready FInancial Records".
+
+Historical Evidence: According to the Heatmap (Visualization 1) that tracks Absolute Revisions and the Calendar Months that have the highest positive revision (Analysis 4); historically, the months with the highest total revisions are September, August, and July, respectively. Additionally, September has the highest percent of positive and average absolute revisions across all months by a a sizable margin, showing that companies are showing more honesty to correct reporting mistakes earlier in the year and try to elude any claims of fraudulent inflation that may arise come Q4 Earnings once it is audit season. In terms of the non corporate workforce, September still sees high positive revisions due to education/municipal related hirings being reported around this time of year.
