@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.22">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Daniel Ohebshalom">
+
+<title>Facilities Access in NYC Neighborhoods - Final Induvidual Report – STA 9750 Submission Material</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-cd7454b418030687c631a6a7286fbe16.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-8e92d9f42a47732ff4c8bbfdf565a50f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<link href="site_libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+<script src="site_libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+<link href="site_libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet">
+<script src="site_libs/datatables-binding-0.34.0/datatables.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<link href="site_libs/dt-core-1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
+<link href="site_libs/dt-core-1.13.6/css/jquery.dataTables.extra.css" rel="stylesheet">
+<script src="site_libs/dt-core-1.13.6/js/jquery.dataTables.min.js"></script>
+<link href="site_libs/crosstalk-1.2.1/css/crosstalk.min.css" rel="stylesheet">
+<script src="site_libs/crosstalk-1.2.1/js/crosstalk.min.js"></script>
+<script src="site_libs/plotly-binding-4.11.0/plotly.js"></script>
+<script src="site_libs/typedarray-0.1/typedarray.min.js"></script>
+<link href="site_libs/plotly-htmlwidgets-css-2.11.1/plotly-htmlwidgets.css" rel="stylesheet">
+<script src="site_libs/plotly-main-2.11.1/plotly-latest.min.js"></script>
+
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="./index.html" class="navbar-brand navbar-brand-logo">
+    </a>
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">STA 9750 Submission Material</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
+  <li><a href="#methods-analysis" id="toc-methods-analysis" class="nav-link" data-scroll-target="#methods-analysis">Methods &amp; Analysis</a>
+  <ul class="collapse">
+  <li><a href="#calculations" id="toc-calculations" class="nav-link" data-scroll-target="#calculations">Calculations</a></li>
+  <li><a href="#visualizations" id="toc-visualizations" class="nav-link" data-scroll-target="#visualizations">Visualizations</a></li>
+  </ul></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion">Discussion</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Facilities Access in NYC Neighborhoods - Final Induvidual Report</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Daniel Ohebshalom </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>For the term project, I was assigned the following question: <strong>Are certain neighborhoods overserved/underserved in terms of recreational facilities relative to population density?</strong> Or in easier terms, which neighborhoods have a superflouous amount of parks and which ones are in dire need of more recreational spaces? This is part of our overarching question: <strong>How equitable is access to public park space across different neighborhoods in New York City?.</strong> NYC neighborhoods specifically are being analyzed here as they are amongst the most densely populated in America, and each neighborhodd varies wildly in terms of park availability per analysis. This study seeks to prove which neighborhoods in New York City are the most overserved and underserved in park availability through performing a per-capita analysis per 1,000 residents in each neighborhood, a following spatial distribution to see neighborhood geographic trends in park availability, and finally listing out the top and bottom 20% of neighborhoods in terms of park service with their Population, Number of Facilities, and resulting facilities per 1,000 residents that measure the correlation and overall park accessibility for a Neighborhood and its residents. For this measurement, park type, attributes, or quality are irrelevant, this is just measuring the quantifiable amount of parks in a given space relative to its population and giving reasoning as to why this may be the case.</p>
+</section>
+<section id="data" class="level1">
+<h1>Data</h1>
+<p>For this project, I used the parks properties and total population datasets that were provided by the NYC parks service and Department of City Planning, where I analyzed the connections and disparities between park access in 60 NYC neighborhoods and noted down the 6 best and 6 worst (top/bottom 20%). The Parks properties dataset is specifically noted with multipolyogon cordinates where each park was on the map through spatial notation, which is why I also used a shapefile in the final product to get the geography of NYC to map the neighborhoods and park placements and then in turn assign them to their respective Borough and Community District (BoroCD) on the map for geographic notation that could in the end track the geographic trends of park availability.</p>
+<p>files used: <a href="https://drive.google.com/uc?export=download&amp;id=1Rd8N5VEIqkQiLz46tPgjsWBb3DGGTw9d">Download Link</a></p>
+</section>
+<section id="methods-analysis" class="level1">
+<h1>Methods &amp; Analysis</h1>
+<section id="calculations" class="level2">
+<h2 class="anchored" data-anchor-id="calculations">Calculations</h2>
+<p>For this analysis, I utilized a variety of R functions and methods to reach my goal. Before even reading my datasets, I downloaded a shapefile directory to acquire a map of every NYC neighborhood with the goal to notice if park disparity was a more geographic issue in bordering neighborhoods or if it was scattered. To clean up and match the data so that it ran properly and gave the correct results, I went through an intensive cleaning process in RStudio that included getting rid of blank rows and matching up the neighborhoods with the shapefiles through their BoroCDs. To facilitate the process even more, I went into the Populations CSV and added every neighborhood’s respective BoroCD to match up on the given shapefile during analysis. This method, while non technical, was perhaps the easiest way to reaach my goal as I would have had to create or find a new file that had the BoroCD since it wasn’t originally on the CSV.</p>
+<p>In terms of computing the per captia analysis, we start by loading the shapefile (neighborhoods) provided by the NYC department of city planning through the shapefile and stringer packages in RStudio, unifying the case of the labels on the shapefile in the process and inspecting the columns provided such as the area, multipolygonal geometry coordinates, and most importantly the BoroCD which is renamed to match what is on the population CSV for further analyses later. After a final spatial analysis that readies the shapefile for spatial joins using sf_join and coverts the multipolygonal data to be used, we next load the parks properties CSV (facilities) through the readr package, unifying the names to lowercase and converting the multipolygon to geometry to match up on the shapefile, which is then spatially joined to the data of the shapefile to assign each facility to their respective Neighborhood’s BoroCD as shown in the real world. Once each park is assigned, we run a count function grouped by BoroCD to show quantitatively how many parks are in each neighborhood. Now we must load in the Total Population csv (Population) that also has the respective BoroCD for each neighborhood, ensuring that each column can be ran propely through mutate and replace functions before joining the population data by BoroCD with facility counts for the first steps of computing the per capital analysis, creating a neighborhood_metrics function that is meant to give us the final results. Within said function, we identify the missing values to prevent an error using is.na in the facilities dataset and run the Analysis by Dividing the Facilites by Population and dividing the quotient by 1000 in each neighborhood, rounding to three decimal points (facilities_per_1000). Finally, to produce the rankings for the top 6 best and worst served neighborhoods, we create the best_served and worst_served functions with neighborhood_metrics, arranging the final results desc and head 6 for the best served neighborhoods and sans the desc for the worst served neighborhoods and then finally importing it into a datatable for neatness and searchability of all neighborhoods; Giving us our final results and joining the results back to the shapefile map to create our geographic analysis.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load libraries</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readr)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stringr)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plotly)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DT)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Load the shapefile (NYC Community Districts)</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>neighborhoods <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="st">"nycdwi_25d/nycdwi.shp"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading layer `nycdwi' from data source 
+  `/Users/danieloheb/STA9750-2025-FALL/nycdwi_25d/nycdwi.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 71 features and 3 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 912287.1 ymin: 113279.3 xmax: 1067383 ymax: 273617.8
+Projected CRS: NAD83 / New York Long Island (ftUS)</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(neighborhoods) <span class="ot">&lt;-</span> <span class="fu">tolower</span>(<span class="fu">names</span>(neighborhoods))</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename borocd → BoroCD (to match your population CSV)</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>neighborhoods <span class="ot">&lt;-</span> neighborhoods <span class="sc">%&gt;%</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">BoroCD =</span> borocd)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Project to WGS84 (safe for spatial joins)</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>neighborhoods <span class="ot">&lt;-</span> <span class="fu">st_transform</span>(neighborhoods, <span class="dv">4326</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Load Facilities CSV (with multipolygon WKT)</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>facilities <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"Parks_Properties_20251005.csv"</span>)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(facilities) <span class="ot">&lt;-</span> <span class="fu">tolower</span>(<span class="fu">names</span>(facilities))</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert WKT to geometry</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>facilities_sf <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  facilities,</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">wkt =</span> <span class="st">"multipolygon"</span>,</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">crs =</span> <span class="dv">4326</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Fix invalid geometries</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>facilities_sf <span class="ot">&lt;-</span> <span class="fu">st_make_valid</span>(facilities_sf)</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Spatial join → assign each facility to BoroCD</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>facilities_joined <span class="ot">&lt;-</span> <span class="fu">st_join</span>(</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>  facilities_sf,</span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>  neighborhoods,</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">left =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">join =</span> st_intersects</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Facilities per BoroCD</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>facility_counts <span class="ot">&lt;-</span> facilities_joined <span class="sc">%&gt;%</span></span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(BoroCD) <span class="sc">%&gt;%</span></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">Facilities =</span> <span class="fu">n</span>())</span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Load Population CSV (Now includes BoroCD)</span></span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>population <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"Total Population.csv"</span>)</span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(population) <span class="ot">&lt;-</span> <span class="fu">str_replace_all</span>(<span class="fu">names</span>(population), <span class="st">" "</span>, <span class="st">""</span>)</span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure BoroCD column exists and is numeric</span></span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>population <span class="ot">&lt;-</span> population <span class="sc">%&gt;%</span></span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">BoroCD =</span> <span class="fu">as.integer</span>(BoroCD))</span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a><span class="co"># 6. Join population with facility counts</span></span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a>neighborhood_metrics <span class="ot">&lt;-</span> population <span class="sc">%&gt;%</span></span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(facility_counts, <span class="at">by =</span> <span class="st">"BoroCD"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a>    <span class="at">Facilities =</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(Facilities), <span class="dv">0</span>, Facilities),</span>
+<span id="cb3-61"><a href="#cb3-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">Facilities_per_1000 =</span> <span class="fu">round</span>((Facilities <span class="sc">/</span> Population) <span class="sc">*</span> <span class="dv">1000</span>, <span class="dv">3</span>)</span>
+<span id="cb3-62"><a href="#cb3-62" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb3-63"><a href="#cb3-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-64"><a href="#cb3-64" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-65"><a href="#cb3-65" aria-hidden="true" tabindex="-1"></a><span class="co"># 7. Produce ranking results (Interactive Tables)</span></span>
+<span id="cb3-66"><a href="#cb3-66" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb3-67"><a href="#cb3-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-68"><a href="#cb3-68" aria-hidden="true" tabindex="-1"></a><span class="co"># Best-served neighborhoods</span></span>
+<span id="cb3-69"><a href="#cb3-69" aria-hidden="true" tabindex="-1"></a>best_served <span class="ot">&lt;-</span> neighborhood_metrics <span class="sc">%&gt;%</span></span>
+<span id="cb3-70"><a href="#cb3-70" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(Facilities_per_1000)) <span class="sc">%&gt;%</span></span>
+<span id="cb3-71"><a href="#cb3-71" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">30</span>)</span>
+<span id="cb3-72"><a href="#cb3-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-73"><a href="#cb3-73" aria-hidden="true" tabindex="-1"></a><span class="co"># Underserved neighborhoods</span></span>
+<span id="cb3-74"><a href="#cb3-74" aria-hidden="true" tabindex="-1"></a>worst_served <span class="ot">&lt;-</span> neighborhood_metrics <span class="sc">%&gt;%</span></span>
+<span id="cb3-75"><a href="#cb3-75" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(Facilities_per_1000) <span class="sc">%&gt;%</span></span>
+<span id="cb3-76"><a href="#cb3-76" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">30</span>)</span>
+<span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-78"><a href="#cb3-78" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Top 6 Best-Served ----</span></span>
+<span id="cb3-79"><a href="#cb3-79" aria-hidden="true" tabindex="-1"></a><span class="fu">datatable</span>(</span>
+<span id="cb3-80"><a href="#cb3-80" aria-hidden="true" tabindex="-1"></a>  best_served,</span>
+<span id="cb3-81"><a href="#cb3-81" aria-hidden="true" tabindex="-1"></a>  <span class="at">rownames =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb3-82"><a href="#cb3-82" aria-hidden="true" tabindex="-1"></a>  <span class="at">options =</span> <span class="fu">list</span>(</span>
+<span id="cb3-83"><a href="#cb3-83" aria-hidden="true" tabindex="-1"></a>    <span class="at">pageLength =</span> <span class="dv">6</span>,</span>
+<span id="cb3-84"><a href="#cb3-84" aria-hidden="true" tabindex="-1"></a>    <span class="at">autoWidth =</span> <span class="cn">TRUE</span></span>
+<span id="cb3-85"><a href="#cb3-85" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb3-86"><a href="#cb3-86" aria-hidden="true" tabindex="-1"></a>  <span class="at">caption =</span> htmltools<span class="sc">::</span>tags<span class="sc">$</span><span class="fu">caption</span>(</span>
+<span id="cb3-87"><a href="#cb3-87" aria-hidden="true" tabindex="-1"></a>    <span class="at">style =</span> <span class="st">"caption-side: top; font-weight: bold;"</span>,</span>
+<span id="cb3-88"><a href="#cb3-88" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Top 6 Best-Served Neighborhoods (Facilities per 1,000 Residents)"</span></span>
+<span id="cb3-89"><a href="#cb3-89" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb3-90"><a href="#cb3-90" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div class="datatables html-widget html-fill-item" id="htmlwidget-ee02de0987779f35b917" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-ee02de0987779f35b917">{"x":{"filter":"none","vertical":false,"caption":"<caption style=\"caption-side: top; font-weight: bold;\">Top 6 Best-Served Neighborhoods (Facilities per 1,000 Residents)<\/caption>","data":[["Hunts Point","Brownsville","Lower East Side","East Tremont","Morrisania","East Harlem","The Rockaways","Fort Greene/Brooklyn Hts","Mott Haven","Greenwich Village","East New York","Williamsburg/Greenpoint","St. George","Bedford Stuyvesant","University Heights","Central Harlem","Concourse/Highbridge","Tottenville","Bayside","South Beach","Battery Park/Tribeca","Riverdale","Coney Island","Sunnyside/Woodside","Park Slope","Sunset Park","Howard Beach","Manhattanville","Bushwick","Unionport/Soundview"],[48163,92835,150906,81876,86041,125122,117176,127612,89269,82405,188712,191029,167916,178179,103155,134774,135864,180874,116253,141351,69877,103393,103756,126819,120503,117355,116433,109668,94851,182793],[202,316,103,206,203,111,414,302,201,102,305,301,501,303,205,110,204,503,411,502,101,208,313,402,306,307,410,109,304,209],[33,56,86,46,47,67,58,63,44,36,82,81,71,74,40,52,48,57,36,43,21,31,31,36,34,32,31,28,24,43],[0.6850000000000001,0.603,0.57,0.5620000000000001,0.546,0.535,0.495,0.494,0.493,0.437,0.435,0.424,0.423,0.415,0.388,0.386,0.353,0.315,0.31,0.304,0.301,0.3,0.299,0.284,0.282,0.273,0.266,0.255,0.253,0.235]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Neighborhood<\/th>\n      <th>Population<\/th>\n      <th>BoroCD<\/th>\n      <th>Facilities<\/th>\n      <th>Facilities_per_1000<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":6,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,2,3,4]},{"name":"Neighborhood","targets":0},{"name":"Population","targets":1},{"name":"BoroCD","targets":2},{"name":"Facilities","targets":3},{"name":"Facilities_per_1000","targets":4}],"order":[],"orderClasses":false,"lengthMenu":[6,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Top 6 Worst-Served ----</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">datatable</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  worst_served,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">rownames =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">options =</span> <span class="fu">list</span>(</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">pageLength =</span> <span class="dv">6</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">autoWidth =</span> <span class="cn">TRUE</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">caption =</span> htmltools<span class="sc">::</span>tags<span class="sc">$</span><span class="fu">caption</span>(</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">style =</span> <span class="st">"caption-side: top; font-weight: bold;"</span>,</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Top 6 Worst-Served Neighborhoods (Underserved)"</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div class="datatables html-widget html-fill-item" id="htmlwidget-c3743cac4d83ae49cb9a" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-c3743cac4d83ae49cb9a">{"x":{"filter":"none","vertical":false,"caption":"<caption style=\"caption-side: top; font-weight: bold;\">Top 6 Worst-Served Neighborhoods (Underserved)<\/caption>","data":[["Borough Park","Bensonhurst","East Flatbush","Flatbush/Midwood","Williamsbridge","Woodhaven","Upper East Side","Crown Heights South","Upper West Side","Midtown Business District","Crown Heights North","Chelsea/Clinton","Pelham Parkway","Rego Park/Forest Hills","Bedford Park","Murray Hill/Stuyvesant","Washington Heights","Sheepshead Bay","Queens Village","Bay Ridge","Jamaica/St. Albans","Fresh Meadows/Briarwood","Astoria","Throgs Neck","Elmhurst/Corona","Flushing","Jackson Heights","Canarsie","Ridgewood/Glendale","Unionport/Soundview"],[191488,181041,151084,155564,159574,134679,197221,99276,222068,60629,106763,123454,107275,113611,133017,148344,164938,159291,196770,128425,241588,145102,210897,131408,154724,239850,165368,173309,176805,182793],[312,311,317,314,212,409,108,309,107,105,308,104,211,406,207,106,112,315,413,310,412,408,401,210,404,407,403,318,405,209],[12,13,12,13,16,14,22,12,29,9,16,19,18,20,24,27,30,29,36,24,46,28,41,26,31,48,34,36,40,43],[0.063,0.07199999999999999,0.079,0.08400000000000001,0.1,0.104,0.112,0.121,0.131,0.148,0.15,0.154,0.168,0.176,0.18,0.182,0.182,0.182,0.183,0.187,0.19,0.193,0.194,0.198,0.2,0.2,0.206,0.208,0.226,0.235]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Neighborhood<\/th>\n      <th>Population<\/th>\n      <th>BoroCD<\/th>\n      <th>Facilities<\/th>\n      <th>Facilities_per_1000<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":6,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,2,3,4]},{"name":"Neighborhood","targets":0},{"name":"Population","targets":1},{"name":"BoroCD","targets":2},{"name":"Facilities","targets":3},{"name":"Facilities_per_1000","targets":4}],"order":[],"orderClasses":false,"lengthMenu":[6,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 8. Join results back to map</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>neighborhood_map <span class="ot">&lt;-</span> neighborhoods <span class="sc">%&gt;%</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(neighborhood_metrics, <span class="at">by =</span> <span class="st">"BoroCD"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="visualizations" class="level2">
+<h2 class="anchored" data-anchor-id="visualizations">Visualizations</h2>
+<p>To create the map shown below, we import the ggplot2 and dplyer packages and recalculate the top and bottom 6 measurements to get a proper middle tier that can be displayed (Neighborhood_Metrics). We then joined the neighborhood metrics to the shapefile geometries by BoroCD and filtered the label points for the map so that only the top and the bottom 6 neighborhoods are displayed in the final product (Label Points). Finally, we can generate our map (gg_map), deciding on the appropriate sizes, colors, and placing the respective labels to follow correct graph etiquette.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Map Visualization</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#===========================================</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Recalculate Service Tiers (Top 6 / Bottom 6)</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>neighborhood_metrics <span class="ot">&lt;-</span> neighborhood_metrics <span class="sc">%&gt;%</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(Facilities_per_1000)) <span class="sc">%&gt;%</span> </span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">Rank =</span> <span class="fu">row_number</span>(),</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">Service_Tier =</span> <span class="fu">case_when</span>(</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>      Rank <span class="sc">&lt;=</span> <span class="dv">6</span> <span class="sc">~</span> <span class="st">"Most Served (Top 6)"</span>,</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>      Rank <span class="sc">&gt;</span> (<span class="fu">n</span>() <span class="sc">-</span> <span class="dv">6</span>) <span class="sc">~</span> <span class="st">"Least Served (Bottom 6)"</span>,</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="st">"Middle"</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Join metrics to geometries</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>neighborhood_map <span class="ot">&lt;-</span> neighborhoods <span class="sc">%&gt;%</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(neighborhood_metrics, <span class="at">by =</span> <span class="st">"BoroCD"</span>)</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute centroids for only labeled neighborhoods</span></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>label_points <span class="ot">&lt;-</span> neighborhood_map <span class="sc">%&gt;%</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Service_Tier <span class="sc">!=</span> <span class="st">"Middle"</span>) <span class="sc">%&gt;%</span>        <span class="co"># only top 6 &amp; bottom 6</span></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_centroid</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">lon =</span> <span class="fu">st_coordinates</span>(.)[, <span class="dv">1</span>],</span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">lat =</span> <span class="fu">st_coordinates</span>(.)[, <span class="dv">2</span>]</span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot the map</span></span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>gg_map <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(</span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> neighborhood_map,</span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">fill =</span> Service_Tier),</span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"white"</span>,</span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">0.8</span></span>
+<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(</span>
+<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(</span>
+<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Least Served (Bottom 6)"</span> <span class="ot">=</span> <span class="st">"#ff4c4c"</span>,</span>
+<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Middle"</span> <span class="ot">=</span> <span class="st">"grey80"</span>,</span>
+<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Most Served (Top 6)"</span> <span class="ot">=</span> <span class="st">"#2ecc71"</span></span>
+<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-58"><a href="#cb6-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(</span>
+<span id="cb6-59"><a href="#cb6-59" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> label_points,</span>
+<span id="cb6-60"><a href="#cb6-60" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> lon, <span class="at">y =</span> lat, <span class="at">label =</span> Neighborhood),</span>
+<span id="cb6-61"><a href="#cb6-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">2.6</span>,</span>
+<span id="cb6-62"><a href="#cb6-62" aria-hidden="true" tabindex="-1"></a>    <span class="at">fontface =</span> <span class="st">"bold"</span>,</span>
+<span id="cb6-63"><a href="#cb6-63" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"black"</span></span>
+<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-65"><a href="#cb6-65" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb6-66"><a href="#cb6-66" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"NYC Neighborhood Facility Access"</span>,</span>
+<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Top 5 Most Served (Green) and Bottom 5 Least Served (Red)"</span>,</span>
+<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="st">"Service Level"</span></span>
+<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">16</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>),</span>
+<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"bottom"</span></span>
+<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(gg_map)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Individual_Report_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The Scatterplot graph follows a similar approach. After loading in the prior two packages plus ggrepel to prevent egrigous label overlap, we perform the filter function again to ensure there is a middle tier, and then create the scatter plot through ggplot with correct graph etiquette, only this time instead of displaying a map we must select and adjust the axes based on the prior computed data. Using the neighborhood_metrics function, we select the population and facilities_per_1000 for the x and y axes respectively and decide on various graph facets such as point size (preventing overlap in the process), selecting point color, and properly labeling the graph. Finally, we import plotly and its various mechanics to make the graph interactive to show each Neighborhood’s statistics on the plot itself.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#========================================================</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Scatter plot:</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#========================================================</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggrepel)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plotly)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Filter only the neighborhoods we want to label</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>label_points <span class="ot">&lt;-</span> neighborhood_metrics <span class="sc">%&gt;%</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Service_Tier <span class="sc">!=</span> <span class="st">"Middle"</span>)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>scatter_plot <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>  neighborhood_metrics,</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aes</span>(</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> Population,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> Facilities_per_1000,</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> Service_Tier,</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">text =</span> <span class="fu">paste0</span>(</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>      <span class="st">"&lt;b&gt;"</span>, Neighborhood, <span class="st">"&lt;/b&gt;&lt;br&gt;"</span>,</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Population: "</span>, scales<span class="sc">::</span><span class="fu">comma</span>(Population), <span class="st">"&lt;br&gt;"</span>,</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Facilities per 1,000: "</span>, <span class="fu">round</span>(Facilities_per_1000, <span class="dv">3</span>), <span class="st">"&lt;br&gt;"</span>,</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Service Tier: "</span>, Service_Tier</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>) <span class="sc">+</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>, <span class="at">alpha =</span> <span class="fl">0.85</span>) <span class="sc">+</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text_repel</span>(</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> label_points,</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">label =</span> Neighborhood),</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">3.4</span>,</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">fontface =</span> <span class="st">"bold"</span>,</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">max.overlaps =</span> <span class="cn">Inf</span>,</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">box.padding =</span> <span class="fl">0.5</span>,</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">point.padding =</span> <span class="fl">0.3</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(</span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Most Served (Top 6)"</span> <span class="ot">=</span> <span class="st">"#2ecc71"</span>,</span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Middle"</span> <span class="ot">=</span> <span class="st">"grey60"</span>,</span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Least Served (Bottom 6)"</span> <span class="ot">=</span> <span class="st">"#ff4c4c"</span></span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Park Access vs Total Population"</span>,</span>
+<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Top 6 Most Served and Bottom 6 Least Served Neighborhoods Highlighted"</span>,</span>
+<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Total Population"</span>,</span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Facilities per 1,000 Residents"</span>,</span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"Service Tier"</span></span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">13</span>)</span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplotly</span>(scatter_plot, <span class="at">tooltip =</span> <span class="st">"text"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-5770a536a8ac3fa52f53" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-5770a536a8ac3fa52f53">{"x":{"data":[{"x":[134679,159574,155564,151084,181041,191488],"y":[0.104,0.10000000000000001,0.084000000000000005,0.079000000000000001,0.071999999999999995,0.063],"text":["<b>Woodhaven<\/b><br>Population: 134,679<br>Facilities per 1,000: 0.104<br>Service Tier: Least Served (Bottom 6)","<b>Williamsbridge<\/b><br>Population: 159,574<br>Facilities per 1,000: 0.1<br>Service Tier: Least Served (Bottom 6)","<b>Flatbush/Midwood<\/b><br>Population: 155,564<br>Facilities per 1,000: 0.084<br>Service Tier: Least Served (Bottom 6)","<b>East Flatbush<\/b><br>Population: 151,084<br>Facilities per 1,000: 0.079<br>Service Tier: Least Served (Bottom 6)","<b>Bensonhurst<\/b><br>Population: 181,041<br>Facilities per 1,000: 0.072<br>Service Tier: Least Served (Bottom 6)","<b>Borough Park<\/b><br>Population: 191,488<br>Facilities per 1,000: 0.063<br>Service Tier: Least Served (Bottom 6)"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(255,76,76,1)","opacity":0.84999999999999998,"size":11.338582677165356,"symbol":"circle","line":{"width":1.8897637795275593,"color":"rgba(255,76,76,1)"}},"hoveron":"points","name":"Least Served (Bottom 6)","legendgroup":"Least Served (Bottom 6)","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[117176,127612,89269,82405,188712,191029,167916,178179,103155,134774,135864,180874,116253,141351,69877,103393,103756,126819,120503,117355,116433,109668,94851,182793,176805,173309,165368,154724,239850,131408,210897,145102,241588,128425,196770,148344,164938,159291,133017,113611,107275,123454,106763,60629,222068,99276,197221],"y":[0.495,0.49399999999999999,0.49299999999999999,0.437,0.435,0.42399999999999999,0.42299999999999999,0.41499999999999998,0.38800000000000001,0.38600000000000001,0.35299999999999998,0.315,0.31,0.30399999999999999,0.30099999999999999,0.29999999999999999,0.29899999999999999,0.28399999999999997,0.28199999999999997,0.27300000000000002,0.26600000000000001,0.255,0.253,0.23499999999999999,0.22600000000000001,0.20799999999999999,0.20599999999999999,0.20000000000000001,0.20000000000000001,0.19800000000000001,0.19400000000000001,0.193,0.19,0.187,0.183,0.182,0.182,0.182,0.17999999999999999,0.17599999999999999,0.16800000000000001,0.154,0.14999999999999999,0.14799999999999999,0.13100000000000001,0.121,0.112],"text":["<b>The Rockaways<\/b><br>Population: 117,176<br>Facilities per 1,000: 0.495<br>Service Tier: Middle","<b>Fort Greene/Brooklyn Hts<\/b><br>Population: 127,612<br>Facilities per 1,000: 0.494<br>Service Tier: Middle","<b>Mott Haven<\/b><br>Population: 89,269<br>Facilities per 1,000: 0.493<br>Service Tier: Middle","<b>Greenwich Village<\/b><br>Population: 82,405<br>Facilities per 1,000: 0.437<br>Service Tier: Middle","<b>East New York<\/b><br>Population: 188,712<br>Facilities per 1,000: 0.435<br>Service Tier: Middle","<b>Williamsburg/Greenpoint<\/b><br>Population: 191,029<br>Facilities per 1,000: 0.424<br>Service Tier: Middle","<b>St. George<\/b><br>Population: 167,916<br>Facilities per 1,000: 0.423<br>Service Tier: Middle","<b>Bedford Stuyvesant<\/b><br>Population: 178,179<br>Facilities per 1,000: 0.415<br>Service Tier: Middle","<b>University Heights<\/b><br>Population: 103,155<br>Facilities per 1,000: 0.388<br>Service Tier: Middle","<b>Central Harlem<\/b><br>Population: 134,774<br>Facilities per 1,000: 0.386<br>Service Tier: Middle","<b>Concourse/Highbridge<\/b><br>Population: 135,864<br>Facilities per 1,000: 0.353<br>Service Tier: Middle","<b>Tottenville<\/b><br>Population: 180,874<br>Facilities per 1,000: 0.315<br>Service Tier: Middle","<b>Bayside<\/b><br>Population: 116,253<br>Facilities per 1,000: 0.31<br>Service Tier: Middle","<b>South Beach<\/b><br>Population: 141,351<br>Facilities per 1,000: 0.304<br>Service Tier: Middle","<b>Battery Park/Tribeca<\/b><br>Population: 69,877<br>Facilities per 1,000: 0.301<br>Service Tier: Middle","<b>Riverdale<\/b><br>Population: 103,393<br>Facilities per 1,000: 0.3<br>Service Tier: Middle","<b>Coney Island<\/b><br>Population: 103,756<br>Facilities per 1,000: 0.299<br>Service Tier: Middle","<b>Sunnyside/Woodside<\/b><br>Population: 126,819<br>Facilities per 1,000: 0.284<br>Service Tier: Middle","<b>Park Slope<\/b><br>Population: 120,503<br>Facilities per 1,000: 0.282<br>Service Tier: Middle","<b>Sunset Park<\/b><br>Population: 117,355<br>Facilities per 1,000: 0.273<br>Service Tier: Middle","<b>Howard Beach<\/b><br>Population: 116,433<br>Facilities per 1,000: 0.266<br>Service Tier: Middle","<b>Manhattanville<\/b><br>Population: 109,668<br>Facilities per 1,000: 0.255<br>Service Tier: Middle","<b>Bushwick<\/b><br>Population: 94,851<br>Facilities per 1,000: 0.253<br>Service Tier: Middle","<b>Unionport/Soundview<\/b><br>Population: 182,793<br>Facilities per 1,000: 0.235<br>Service Tier: Middle","<b>Ridgewood/Glendale<\/b><br>Population: 176,805<br>Facilities per 1,000: 0.226<br>Service Tier: Middle","<b>Canarsie<\/b><br>Population: 173,309<br>Facilities per 1,000: 0.208<br>Service Tier: Middle","<b>Jackson Heights<\/b><br>Population: 165,368<br>Facilities per 1,000: 0.206<br>Service Tier: Middle","<b>Elmhurst/Corona<\/b><br>Population: 154,724<br>Facilities per 1,000: 0.2<br>Service Tier: Middle","<b>Flushing<\/b><br>Population: 239,850<br>Facilities per 1,000: 0.2<br>Service Tier: Middle","<b>Throgs Neck<\/b><br>Population: 131,408<br>Facilities per 1,000: 0.198<br>Service Tier: Middle","<b>Astoria<\/b><br>Population: 210,897<br>Facilities per 1,000: 0.194<br>Service Tier: Middle","<b>Fresh Meadows/Briarwood<\/b><br>Population: 145,102<br>Facilities per 1,000: 0.193<br>Service Tier: Middle","<b>Jamaica/St. Albans<\/b><br>Population: 241,588<br>Facilities per 1,000: 0.19<br>Service Tier: Middle","<b>Bay Ridge<\/b><br>Population: 128,425<br>Facilities per 1,000: 0.187<br>Service Tier: Middle","<b>Queens Village<\/b><br>Population: 196,770<br>Facilities per 1,000: 0.183<br>Service Tier: Middle","<b>Murray Hill/Stuyvesant<\/b><br>Population: 148,344<br>Facilities per 1,000: 0.182<br>Service Tier: Middle","<b>Washington Heights<\/b><br>Population: 164,938<br>Facilities per 1,000: 0.182<br>Service Tier: Middle","<b>Sheepshead Bay<\/b><br>Population: 159,291<br>Facilities per 1,000: 0.182<br>Service Tier: Middle","<b>Bedford Park<\/b><br>Population: 133,017<br>Facilities per 1,000: 0.18<br>Service Tier: Middle","<b>Rego Park/Forest Hills<\/b><br>Population: 113,611<br>Facilities per 1,000: 0.176<br>Service Tier: Middle","<b>Pelham Parkway<\/b><br>Population: 107,275<br>Facilities per 1,000: 0.168<br>Service Tier: Middle","<b>Chelsea/Clinton<\/b><br>Population: 123,454<br>Facilities per 1,000: 0.154<br>Service Tier: Middle","<b>Crown Heights North<\/b><br>Population: 106,763<br>Facilities per 1,000: 0.15<br>Service Tier: Middle","<b>Midtown Business District<\/b><br>Population: 60,629<br>Facilities per 1,000: 0.148<br>Service Tier: Middle","<b>Upper West Side<\/b><br>Population: 222,068<br>Facilities per 1,000: 0.131<br>Service Tier: Middle","<b>Crown Heights South<\/b><br>Population: 99,276<br>Facilities per 1,000: 0.121<br>Service Tier: Middle","<b>Upper East Side<\/b><br>Population: 197,221<br>Facilities per 1,000: 0.112<br>Service Tier: Middle"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(153,153,153,1)","opacity":0.84999999999999998,"size":11.338582677165356,"symbol":"circle","line":{"width":1.8897637795275593,"color":"rgba(153,153,153,1)"}},"hoveron":"points","name":"Middle","legendgroup":"Middle","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[48163,92835,150906,81876,86041,125122],"y":[0.68500000000000005,0.60299999999999998,0.56999999999999995,0.56200000000000006,0.54600000000000004,0.53500000000000003],"text":["<b>Hunts Point<\/b><br>Population: 48,163<br>Facilities per 1,000: 0.685<br>Service Tier: Most Served (Top 6)","<b>Brownsville<\/b><br>Population: 92,835<br>Facilities per 1,000: 0.603<br>Service Tier: Most Served (Top 6)","<b>Lower East Side<\/b><br>Population: 150,906<br>Facilities per 1,000: 0.57<br>Service Tier: Most Served (Top 6)","<b>East Tremont<\/b><br>Population: 81,876<br>Facilities per 1,000: 0.562<br>Service Tier: Most Served (Top 6)","<b>Morrisania<\/b><br>Population: 86,041<br>Facilities per 1,000: 0.546<br>Service Tier: Most Served (Top 6)","<b>East Harlem<\/b><br>Population: 125,122<br>Facilities per 1,000: 0.535<br>Service Tier: Most Served (Top 6)"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(46,204,113,1)","opacity":0.84999999999999998,"size":11.338582677165356,"symbol":"circle","line":{"width":1.8897637795275593,"color":"rgba(46,204,113,1)"}},"hoveron":"points","name":"Most Served (Top 6)","legendgroup":"Most Served (Top 6)","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"name":"Least Served (Bottom 6)","legendgroup":"Least Served (Bottom 6)","showlegend":false,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"name":"Most Served (Top 6)","legendgroup":"Most Served (Top 6)","showlegend":false,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null}],"layout":{"margin":{"t":48.810294728102946,"r":8.6342880863428846,"b":47.488584474885847,"l":50.942299709423011},"font":{"color":"rgba(0,0,0,1)","family":"","size":17.268576172685762},"title":{"text":"Park Access vs Total Population","font":{"color":"rgba(0,0,0,1)","family":"","size":20.722291407222912},"x":0,"xref":"paper"},"xaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[38491.75,251259.25],"tickmode":"array","ticktext":["50000","100000","150000","200000","250000"],"tickvals":[50000,100000,150000,200000,250000],"categoryorder":"array","categoryarray":["50000","100000","150000","200000","250000"],"nticks":null,"ticks":"","tickcolor":null,"ticklen":4.3171440431714405,"tickwidth":0,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":13.814860938148611},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"gridcolor":"rgba(235,235,235,1)","gridwidth":0.78493528057662576,"zeroline":false,"anchor":"y","title":{"text":"Total Population","font":{"color":"rgba(0,0,0,1)","family":"","size":17.268576172685762}},"hoverformat":".2f"},"yaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[0.031899999999999998,0.71610000000000007],"tickmode":"array","ticktext":["0.2","0.4","0.6"],"tickvals":[0.20000000000000001,0.40000000000000002,0.60000000000000009],"categoryorder":"array","categoryarray":["0.2","0.4","0.6"],"nticks":null,"ticks":"","tickcolor":null,"ticklen":4.3171440431714423,"tickwidth":0,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":13.814860938148611},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"gridcolor":"rgba(235,235,235,1)","gridwidth":0.78493528057662576,"zeroline":false,"anchor":"x","title":{"text":"Facilities per 1,000 Residents","font":{"color":"rgba(0,0,0,1)","family":"","size":17.268576172685762}},"hoverformat":".2f"},"shapes":[{"type":"rect","fillcolor":null,"line":{"color":null,"width":0,"linetype":[]},"yref":"paper","xref":"paper","layer":"below","x0":0,"x1":1,"y0":0,"y1":1}],"showlegend":true,"legend":{"bgcolor":null,"bordercolor":null,"borderwidth":0,"font":{"color":"rgba(0,0,0,1)","family":"","size":13.814860938148611},"title":{"text":"Service Tier","font":{"color":"rgba(0,0,0,1)","family":"","size":17.268576172685762}}},"hovermode":"closest","barmode":"relative"},"config":{"doubleClick":"reset","modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"source":"A","attrs":{"f22b266e6d89":{"x":{},"y":{},"colour":{},"text":{},"type":"scatter"},"f22b1bd95115":{"x":{},"y":{},"colour":{},"text":{},"label":{}}},"cur_data":"f22b266e6d89","visdat":{"f22b266e6d89":["function (y) ","x"],"f22b1bd95115":["function (y) ","x"]},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+</section>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<p>The results of this per capita analysis show some striking results in the overall distribution of New York City parks relevant to its zoned neighborhoods. Just looking at at the numbers you could see a very striking difference not just in the disparity of park availability, but in how each of the selected NYC neighborhood in this analysis differ in overall habitual practices. To start with the worst served neighborhoods, the top 4 worst served neighborhoods are all next to each other in the same geographic area of Southwest Brooklyn. Of these neighborhoods, Borough Park (BoroCD:312) boasts a population of 191,488, yet only has 12 parks within its neighborhood zoning, giving it a per capita density of only 0.063 parks per 1000 residents. The neighboring Bensonhurst (311) has a slightly smaller population of 181,488, but with only 13 parks, doesn’t have a much higher density with only 0.072 parks per 1000 residents. 2 other neighboring areas, East Flatbush (317) and Midwood (314) have similar population and park numbers at 151084/12 for the former and 155564/13 for the latter, thus boasting similarly low densities of 0.079 and 0.084 parks per 1000 residents respectively.</p>
+<p>The graphical results tell a similar story, just by an analysis without any knowledge of the data, we can see that both the neighborhoods with the highest and lowest amounts of park availability relative to their population all border each other for the most part. While there are some geographical outliers, its tells a much larger story in the overall grand scope of both city demographics and the development of these areas both recently and overtime that have shaped the lifestyle of their citizens. Geographically, Southwest Brooklyn had the top 4 worst neighborhoods for park service, and South Bronx had 3 of the top 5 with Nearby East Harlem rounding out the top 20% in the best served neighborhoods.</p>
+<p>Additionally, the scatterplot and data table confirms to the reader that there is none to very minimal relationship between the amount of parks per 1000 residents and the population of a neighborhood when it comes to the average NYC citizen having accessible park service since park and population numbers varied between neighborhoods with no correlation. However, the middle 60% of the data appears to show neighborhoods with facility counts that scale with their populations to some extent, and those in the top and bottom 20% are outliers in terms of the relativity between population and number of facilities.</p>
+</section>
+<section id="discussion" class="level1">
+<h1>Discussion</h1>
+<p>After running a population density analysis that analyzed the number of facilities relevant to the population of all NYC Neighborhoods per 1000 residents, I can conclude that neighborhoods in Southwest Brooklyn are amongst the most underserved relative to their population densities due to the high urbanization and industrialization in this area being not very permissive for ample recreation spaces despite a notable distance from Brooklyn’s earliest developed parks such as Prospect Park and Marine Park being a perfect reason to build greenspaces. As living spaces in this area have historically been tightly packed together full of families pretty much since the mass emigration to NYC, it would be difficult to develop new spaces without displacement. This is due to a combination of zoning laws and the original planning and development of these areas as “streetcar suburbs” in the 19th century and after the large major Brooklyn Parks had been developed, leaving these neighborhoods with small urbanized playgrounds and schoolyards. Of these neighborhoods, Borough Park is the most underserved, with about 12 parks total for its almost 200,000 residents within its neighborhood zoning, and the succeeding 3 neighborhoods of Bensonhurst, East Flatbush, and Midwood show similar numbers for population density and resulting park availability with each reporting only 12-13 parks each for their 150,000 plus residents.</p>
+<p>On the contrary, East Harlem and South Bronx neighborhoods are seen as the most served areas for recreation spaces along with the Lower East Side. This can be attributed to the lower overall population and in turn much lower living density of these areas relative to the rest of the urbanized portions of NYC and the overall redevelopment of these areas over the last few decades allowing for more spaces to be constructed, with an example being the construction of the new Yankee Stadium allowing the creation of creation of Heritage Park and other green spaces in and around the old stadium’s space and further redevelopment in the area that allowed for other green spaces to develop in the area as a result. Of these neighborhoods, Hunts Point is the most overserved neighborhood in terms of park availability in NYC, with about 33 parks for its 48,000 residents, with neighboring areas such as East Tremont, Morrisania, and East Harlem also providing ample spaces for its residents. Even the densely populated Lower East Side with over 150,000 residents still has space for 86 park facilities within neighborhood zoning, which is attributed to the area knocking down and repurposing old buildings for greenspace rather than maintaining older apartments like the neighborhoods in Brooklyn where the citizen are living like sardines with little open space.</p>
+<p>Neighborhoods in the middle 60%, meanwhile, where shown to have a closer correlation in the amount of parks relative to population, this was especially true in Manhattan where the majority of the city was planned around Central Park and thus were able to build more facilities accordingly despite many neighborhoods having high populations. Suprisingly, suburban neighborhoods in Queens and Staten Island did not crack the top 20% in best served park availability despite being prime areas for land redevelopment to build such spaces. While a sizeable amount of accessible parks exist for these residents, this statistic can be attributed to many residents having backyards, which decreases the need for an abundance of shared greenspaces like in the Bronx; which is apartment dominated but has seen numerous redevelopments to create more spaces in the areas where old buildings once stood. In the Brooklyn neighborhoods, this is impossible as the structures have always been kept in service as apartment buildings for large families, thus knocking even one down would displace hundreds of residents. Since public transportation has never been more accessible and has been a robust system in NYC for almost a century, this can further prove why these areas with low park availability may never receive another park unless population trends change in the future.</p>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>To answer the overarching question, I have discovered that for many neighborhoods, park access is not equitable, while others it is almost overequitable from a quantitative standpoint with greenspace availablitiy and lower population density. This specific question indirectly highlighted historical investment in facility infrastructure across NYC neighborhoods and whether it is possible to create more greenspaces in a given area without displacement of residents. And as was previously discussed, it is nearly impossible to make such investments in many places where many live people ive so close together and thus a park construction would be seen more as a disruption than a benefit.</p>
+<p>With this question could also be a window into the lifestyles and demographics of NYC residents in a certain neighborhoods, and thus other studies could potentially arise/utilize the results this question gave; such as measuring neighborhood stress levels among the various neighborhoods and whether park availability has anything to do with some feeling more stressed than others due to greenspaces being scientifically proven to lowes such levels.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/oheb\.github\.io\/STA9750-2025-FALL\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
