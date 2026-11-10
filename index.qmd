@@ -1,8 +1,8 @@
 ---
-title: "Daniel Ohebshalom's Mini Project 00"
+title: "Daniel Ohebshalom's STA 9750 Portfolio"
 ---
 
-Hi, I am Daniel Ohebshalom, MSBA Student at Baruch College
+Hi, I am Daniel Ohebshalom, MSBA Student at [Baruch College](Baruch.cuny.edu)
 I went to [SUNY Buffalo](buffalo.edu) for Undergraduate, class of 2025, with a Bachelor of Science in Business Administration
 
 List of Mini Projects:
