@@ -3,9 +3,19 @@ title: "Daniel Ohebshalom's Mini Project 00"
 ---
 
 Hi, I am Daniel Ohebshalom, MSBA Student at Baruch College
-I went to SUNY Buffalo for Undergraduate, class of 2025, with a bachelor of Science in Business Administration
+I went to [SUNY Buffalo](buffalo.edu) for Undergraduate, class of 2025, with a Bachelor of Science in Business Administration
 
-Here is my [favorite website](https://www.espn.com)
+List of Mini Projects:
+
+[MP01](https://oheb.github.io/STA9750-2025-FALL/mp01.html)
+[MP02](https://oheb.github.io/STA9750-2025-FALL/mp02.html)
+[MP03](https://oheb.github.io/STA9750-2025-FALL/mp03.html)
+[MP04]((https://oheb.github.io/STA9750-2025-FALL/mp04.html)
+
+Final Project:
+
+[Induvidual Report](https://oheb.github.io/STA9750-2025-FALL/Individual_Report.html)
+[FInal Group Report](https://oheb.github.io/STA9750-2025-FALL/Final_Group_Report.html)
 
 If you want to keep in touch, you could reach me either at <daniel.josephohebshalom@gmail.com> or <https://www.linkedin.com/in/danielohebshalom>
 
